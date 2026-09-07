@@ -6,12 +6,12 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "node scripts/clean-output.mjs && wxt",
-    "dev:firefox": "node scripts/clean-output.mjs && wxt -b firefox",
-    "build": "node scripts/clean-output.mjs && wxt build",
-    "build:firefox": "node scripts/clean-output.mjs && wxt build -b firefox",
-    "zip": "wxt zip",
-    "zip:firefox": "wxt zip -b firefox",
+    "dev": "node scripts/run-wxt.mjs",
+    "dev:firefox": "node scripts/run-wxt.mjs -b firefox",
+    "build": "node scripts/run-wxt.mjs build",
+    "build:firefox": "node scripts/run-wxt.mjs build -b firefox",
+    "zip": "node scripts/run-wxt.mjs zip",
+    "zip:firefox": "node scripts/run-wxt.mjs zip -b firefox",
     "compile": "tsc --noEmit",
     "test": "vitest",
     "postinstall": "node scripts/bootstrap-i18n.mjs && wxt prepare"
@@ -42,12 +42,14 @@
     "postcss-preset-mantine": "^1.18.0",
     "postcss-simple-vars": "^7.0.1",
     "typescript": "^5.9.2",
+    "vite": "7.0.6",
     "vitest": "^3.2.4",
     "wxt": "^0.20.6"
   },
   "pnpm": {
     "overrides": {
-      "@wxt-dev/storage": "1.2.0"
+      "@wxt-dev/storage": "1.2.0",
+      "vite": "7.0.6"
     }
   }
 }
