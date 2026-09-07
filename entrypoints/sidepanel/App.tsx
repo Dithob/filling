@@ -21,6 +21,7 @@ import { notifications } from '@mantine/notifications';
 import { browser } from 'wxt/browser';
 import { listProfiles } from '../../shared/storage/profiles';
 import type { ProfileRecord, ProviderConfig } from '../../shared/types';
+import { toLabeledRecord } from '../../shared/schema/cnProfile';
 import type {
   FillResultMessage,
   PromptAiRequestInput,
@@ -1287,7 +1288,7 @@ export default function App() {
         currentValue: input.currentValue ?? manualValue ?? '',
         suggestion: input.suggestion ?? selectedEntry.suggestion ?? '',
         matches: input.matches,
-        profile: selectedProfile?.resume ?? null,
+        profile: selectedProfile ? toLabeledRecord(selectedProfile) : null,
         signal: options?.signal,
       });
     };
@@ -1473,24 +1474,13 @@ function deriveManualValue(entry: FieldEntry, nextSuggestion?: string | null): s
 }
 
 function formatProfileLabel(profile: ProfileRecord): string {
-  const basics = extractBasics(profile.resume);
+  // 方案名优先（如「算法岗」），其次本人姓名
   const name =
-    typeof basics.name === 'string' && basics.name.trim()
-      ? basics.name.trim()
-      : i18n.t('sidepanel.profile.unnamed');
+    profile.name?.trim() ||
+    profile.basic?.name?.trim() ||
+    i18n.t('sidepanel.profile.unnamed');
   const created = new Date(profile.createdAt).toLocaleDateString();
   return i18n.t('sidepanel.profile.label', [name, created]);
-}
-
-function extractBasics(resume: unknown): Record<string, unknown> {
-  if (resume && typeof resume === 'object' && !Array.isArray(resume)) {
-    const value = resume as Record<string, unknown>;
-    const basics = value.basics;
-    if (basics && typeof basics === 'object' && !Array.isArray(basics)) {
-      return basics as Record<string, unknown>;
-    }
-  }
-  return {};
 }
 
 function truncate(value: string, limit = 120): string {

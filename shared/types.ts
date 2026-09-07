@@ -1,3 +1,5 @@
+import type { CnProfile } from './schema/cnProfile';
+
 export type ProviderKind = 'on-device' | 'openai' | 'gemini';
 
 export interface OnDeviceProviderConfig {
@@ -40,19 +42,18 @@ export interface StoredFileReference {
 
 export type ResumeExtractionResult = Record<string, unknown>;
 
-export interface ProfileRecord {
-  id: string;
-  createdAt: string;
+/**
+ * Stored profile. The flat Chinese schema (CnProfile) is the source of truth;
+ * the extra fields are legacy metadata kept so existing UI can still render.
+ */
+export type ProfileRecord = CnProfile & {
   provider?: ProviderSnapshot;
   parsedAt?: string;
-  sourceFile?: StoredFileReference;
-  rawText: string;
-  resume?: unknown;
   validation?: {
     valid: boolean;
     errors?: string[];
   };
-}
+};
 
 export interface AppSettings {
   provider: ProviderConfig;

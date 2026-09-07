@@ -1,5 +1,6 @@
 import type { PromptOptionSlot } from './types';
 import type { ProfileRecord } from '../types';
+import { toLabeledRecord } from '../schema/cnProfile';
 
 export interface ManualValueNode {
   id: string;
@@ -41,7 +42,13 @@ export function buildManualValueTree(
   const context: BuildContext = { seen: new WeakSet() };
   const roots: ManualValueNode[] = [];
 
-  const resumeNode = buildNode(profile.resume, ['resume'], resumeLabel, resumeLabel, context);
+  const resumeNode = buildNode(
+    toLabeledRecord(profile),
+    ['profile'],
+    resumeLabel,
+    resumeLabel,
+    context,
+  );
   if (resumeNode) {
     roots.push(resumeNode);
   }

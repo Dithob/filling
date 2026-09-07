@@ -6,29 +6,38 @@ import {
   resolveProfileName,
 } from '../../../../entrypoints/options/hooks/profileUtils';
 import type { ProfileRecord } from '../../../../shared/types';
+import { createEmptyProfile } from '../../../../shared/schema/cnProfile';
 
 const t = (key: string, args?: unknown) =>
   Array.isArray(args) ? `${key}:${args.join(',')}` : key;
 
 const baseProfile: ProfileRecord = {
-  id: 'profile-1',
+  ...createEmptyProfile('profile-1', ''),
   createdAt: '2024-01-01T00:00:00.000Z',
-  resume: {},
   rawText: 'hello',
   sourceFile: undefined,
 };
 
 describe('profile formatting helpers', () => {
-  it('falls back to unnamed when basics are missing', () => {
+  it('falls back to unnamed when both scheme and person name are missing', () => {
     expect(resolveProfileName(baseProfile, t)).toBe('onboarding.manage.unnamed');
   });
 
-  it('extracts the name from resume basics', () => {
+  it('prefers the scheme name over the person name', () => {
     const profile: ProfileRecord = {
       ...baseProfile,
-      resume: { basics: { name: 'Ada Lovelace' } },
+      name: '算法岗',
+      basic: { name: '张三', phone: '', email: '' },
     };
-    expect(resolveProfileName(profile, t)).toBe('Ada Lovelace');
+    expect(resolveProfileName(profile, t)).toBe('算法岗');
+  });
+
+  it('uses the person name when no scheme name is set', () => {
+    const profile: ProfileRecord = {
+      ...baseProfile,
+      basic: { name: '张三', phone: '', email: '' },
+    };
+    expect(resolveProfileName(profile, t)).toBe('张三');
   });
 
   it('describes uploaded files in the summary', () => {

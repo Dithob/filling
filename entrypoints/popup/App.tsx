@@ -293,18 +293,14 @@ export default function App() {
 }
 
 function resolveProfileName(profile: ProfileRecord, fallback: string): string {
-  const resume = profile.resume;
-  if (resume && typeof resume === 'object') {
-    const basics = (resume as Record<string, unknown>).basics;
-    if (basics && typeof basics === 'object' && basics !== null) {
-      const name = (basics as Record<string, unknown>).name;
-      if (typeof name === 'string') {
-        const trimmed = name.trim();
-        if (trimmed.length > 0) {
-          return trimmed;
-        }
-      }
-    }
+  // 方案名优先（如「算法岗」），其次本人姓名
+  const schemeName = profile.name?.trim();
+  if (schemeName) {
+    return schemeName;
+  }
+  const personName = profile.basic?.name?.trim();
+  if (personName) {
+    return personName;
   }
   return fallback;
 }

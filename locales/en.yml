@@ -6,6 +6,13 @@ options:
   loading: Loading settings…
   title: Fillo Settings
   description: Fillo keeps your experience ready to go wherever you apply. Manage your data and adapters here.
+  cnProfileJson:
+    title: Profile.json
+    description: Maintain every field in a single JSON file. Import it on any machine to take your settings with you.
+    export: Export JSON
+    import: Import JSON
+    invalid: Failed to read profile.json. Make sure the file is valid JSON.
+    noProfile: Create a profile first to enable export.
   sections:
     gettingStarted: Getting started
     provider: AI provider
@@ -76,6 +83,8 @@ options:
     lastValue: 'Last value: $1'
 
   profiles:
+    aiOptional:
+      description: 'AI parsing is optional. You can fill in your details directly, or import/export them as a profile.json file.'
     gate:
       title: Connect an AI provider first
       description: Profiles unlock once a provider is configured.
@@ -301,6 +310,7 @@ options:
       urlPlaceholder: https://example.com
       datePlaceholder: YYYY-MM-DD
       listPlaceholder: One item per line
+    newProfileName: New profile
     status:
       extracting: Extracting PDF…
       parsing: Parsing resume…

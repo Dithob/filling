@@ -118,7 +118,7 @@ export function ManualCopyMode({
                   radius="md"
                   variant="light"
                   color="gray"
-                  onClick={() => onCopy(t('sidepanel.manual.rawLabel'), selectedProfile.rawText)}
+                  onClick={() => onCopy(t('sidepanel.manual.rawLabel'), selectedProfile.rawText ?? '')}
                 >
                   <Copy size={18} />
                 </ActionIcon>

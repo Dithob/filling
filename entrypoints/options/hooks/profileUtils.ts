@@ -13,23 +13,24 @@ export function formatDateTime(value: string | undefined): string {
   return date.toLocaleString();
 }
 
+/**
+ * 优先显示方案名（如「算法岗」），其次才是本人姓名。
+ */
 export function resolveProfileName(profile: ProfileRecord, t: Translator): string {
-  const resume = profile.resume;
-  if (resume && typeof resume === 'object' && !Array.isArray(resume)) {
-    const basics = (resume as Record<string, unknown>).basics;
-    if (basics && typeof basics === 'object' && !Array.isArray(basics)) {
-      const name = (basics as Record<string, unknown>).name;
-      if (typeof name === 'string' && name.trim().length > 0) {
-        return name.trim();
-      }
-    }
+  const schemeName = profile.name?.trim();
+  if (schemeName) {
+    return schemeName;
+  }
+  const personName = profile.basic?.name?.trim();
+  if (personName) {
+    return personName;
   }
   return t('onboarding.manage.unnamed');
 }
 
 export function formatProfileSummary(profile: ProfileRecord, t: Translator): string {
   const created = formatDateTime(profile.createdAt);
-  const characters = profile.rawText.length.toLocaleString();
+  const characters = (profile.rawText?.length ?? 0).toLocaleString();
   if (profile.sourceFile?.name) {
     return t('onboarding.manage.summaryWithFile', [created, profile.sourceFile.name, characters]);
   }

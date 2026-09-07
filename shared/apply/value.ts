@@ -100,6 +100,17 @@ export function normalizeDate(value: unknown): string | undefined {
   if (!trimmed) {
     return undefined;
   }
+
+  // 中文日期：2027年6月30日 / 2027年6月
+  const cnFull = trimmed.match(/^(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?$/);
+  if (cnFull) {
+    return `${cnFull[1]}-${pad(cnFull[2])}-${pad(cnFull[3])}`;
+  }
+  const cnMonth = trimmed.match(/^(\d{4})\s*年\s*(\d{1,2})\s*月?$/);
+  if (cnMonth) {
+    return `${cnMonth[1]}-${pad(cnMonth[2])}-01`;
+  }
+
   const sanitized = trimmed.replace(/[./]/g, '-').replace(/\s+/g, '-').toLowerCase();
   if (/^\d{4}$/.test(sanitized)) {
     return `${sanitized}-01-01`;

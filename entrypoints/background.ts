@@ -13,6 +13,7 @@ import type {
   ScannedField,
 } from '../shared/apply/types';
 import { buildProfilePromptOptions } from '../shared/apply/promptOptions';
+import { toLabeledRecord } from '../shared/schema/cnProfile';
 import { resolveFieldSlot } from '../shared/apply/fieldMapping';
 import { getAllAdapterIds } from '../shared/apply/slots';
 import { formatSlotLabel } from '../shared/apply/slotLabels';
@@ -778,7 +779,7 @@ async function handlePromptAiSuggestMessage(
       currentValue,
       suggestion,
       matches,
-      profile: profileRecord?.resume ?? null,
+      profile: profileRecord ? toLabeledRecord(profileRecord) : null,
       signal: controller?.signal,
     });
     const normalized = result.value.trim();

@@ -6,6 +6,13 @@ options:
   loading: 正在加载设置…
   title: Fillo 设置
   description: Fillo 会让你的求职流程随时准备就绪。所有数据都存储在浏览器本地。
+  cnProfileJson:
+    title: 信息文件 (profile.json)
+    description: 所有字段都维护在一份 JSON 文件里，可在任意机器上导入带走。
+    export: 导出 JSON
+    import: 导入 JSON
+    invalid: 解析 profile.json 失败，请确认是合法 JSON。
+    noProfile: 请先创建一个方案才能导出。
   sections:
     gettingStarted: 入门
     provider: AI 提供方
@@ -76,6 +83,8 @@ options:
     lastValue: '上次填入：$1'
 
   profiles:
+    aiOptional:
+      description: AI 解析是可选的。你可以直接填写信息，也可以用 profile.json 导入导出。
     gate:
       title: 请先连接 AI 提供方
       description: 完成配置后即可管理档案。
@@ -301,6 +310,7 @@ options:
       urlPlaceholder: https://example.com
       datePlaceholder: YYYY-MM-DD
       listPlaceholder: 每行一条
+    newProfileName: 新方案
     status:
       extracting: 正在提取 PDF…
       parsing: 正在解析简历…

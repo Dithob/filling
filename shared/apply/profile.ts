@@ -1,339 +1,107 @@
+import type { CnProfile } from '../schema/cnProfile';
 import type { ProfileRecord } from '../types';
 import type { FieldSlot } from './slotTypes';
-import {
-  coerceString,
-  getValueByPath,
-  normalizeDate,
-  normalizeEnum,
-  toPrimaryArray,
-} from './value';
+import { coerceString, normalizeDate } from './value';
 
 export type SlotValueMap = Partial<Record<FieldSlot, string>>;
 
-interface SlotContext {
-  profile: ProfileRecord;
-  resume?: Record<string, unknown>;
-  basics?: Record<string, unknown>;
-  location?: Record<string, unknown>;
-  work: Record<string, unknown>[];
-  education: Record<string, unknown>[];
-  meta?: Record<string, unknown>;
-  custom?: Record<string, unknown>;
-}
+type SlotResolver = (profile: CnProfile) => string | undefined;
 
 interface SlotDefinition {
   slot: FieldSlot;
-  resolver: (context: SlotContext) => string | undefined;
+  resolver: SlotResolver;
+}
+
+/**
+ * 姓名拆分：英文按空格拆 given / family；中文首字为姓（优先识别常见复姓）。
+ */
+function splitName(fullName: string): { lastName?: string; firstName?: string } {
+  const name = fullName.trim();
+  if (!name) {
+    return {};
+  }
+  if (/[a-zA-Z]/.test(name) && !/[\u4e00-\u9fa5]/.test(name)) {
+    const parts = name.split(/\s+/);
+    return { firstName: parts[0], lastName: parts.length > 1 ? parts[parts.length - 1] : undefined };
+  }
+  const compoundSurnames = [
+    '欧阳', '上官', '司马', '诸葛', '东方', '夏侯', '皇甫',
+    '尉迟', '公孙', '慕容', '长孙', '宇文', '司徒', '轩辕',
+  ];
+  const compound = compoundSurnames.find((surname) => name.startsWith(surname));
+  if (compound) {
+    return { lastName: compound, firstName: name.slice(compound.length) || undefined };
+  }
+  return { lastName: name.slice(0, 1), firstName: name.slice(1) || undefined };
 }
 
 const SLOT_DEFINITIONS: SlotDefinition[] = [
-  { slot: 'name', resolver: ({ basics }) => readString(basics?.name) },
-  {
-    slot: 'firstName',
-    resolver: ({ basics }) => deriveNameParts(basics).firstName,
-  },
-  {
-    slot: 'lastName',
-    resolver: ({ basics }) => deriveNameParts(basics).lastName,
-  },
-  { slot: 'headline', resolver: ({ basics }) => readString(basics?.label) },
-  { slot: 'summary', resolver: ({ basics }) => readString(basics?.summary) },
-  { slot: 'email', resolver: ({ basics }) => readString(basics?.email) },
-  { slot: 'phone', resolver: ({ basics }) => readString(basics?.phone) },
-  { slot: 'website', resolver: ({ basics }) => readString(basics?.url) },
-  {
-    slot: 'address',
-    resolver: ({ location }) =>
-      readString(location?.address) ??
-      joinLocation([location?.address, location?.streetAddress]),
-  },
-  { slot: 'city', resolver: ({ location }) => readString(location?.city) },
-  { slot: 'state', resolver: ({ location }) => readString(location?.region ?? location?.state) },
-  { slot: 'country', resolver: ({ location }) => readString(location?.country) },
-  { slot: 'postalCode', resolver: ({ location }) => readString(location?.postalCode ?? location?.zip) },
-  {
-    slot: 'birthDate',
-    resolver: ({ basics }) => normalizeDate(basics?.birthdate ?? basics?.birthday),
-  },
-  {
-    slot: 'gender',
-    resolver: ({ basics }) =>
-      normalizeEnum(basics?.gender, 'gender') ?? readString(basics?.gender),
-  },
-  {
-    slot: 'linkedin',
-    resolver: ({ basics }) => collectProfiles(toPrimaryArray(basics?.profiles)).linkedin,
-  },
-  {
-    slot: 'github',
-    resolver: ({ basics }) => collectProfiles(toPrimaryArray(basics?.profiles)).github,
-  },
-  {
-    slot: 'currentCompany',
-    resolver: ({ work }) => coerceString(getValueByPath(work, '0.name')),
-  },
-  {
-    slot: 'currentTitle',
-    resolver: ({ work }) => coerceString(getValueByPath(work, '0.position') ?? getValueByPath(work, '0.title')),
-  },
-  {
-    slot: 'currentLocation',
-    resolver: ({ work }) => composeLocation(extractObject(getValueByPath(work, '0.location'))),
-  },
-  {
-    slot: 'currentStartDate',
-    resolver: ({ work }) => normalizeDate(getValueByPath(work, '0.startDate')),
-  },
-  {
-    slot: 'currentEndDate',
-    resolver: ({ work }) => normalizeDate(getValueByPath(work, '0.endDate')),
-  },
-  {
-    slot: 'educationSchool',
-    resolver: ({ education }) =>
-      coerceString(getValueByPath(education, '0.institution') ?? getValueByPath(education, '0.school')),
-  },
-  {
-    slot: 'educationDegree',
-    resolver: ({ education }) =>
-      coerceString(getValueByPath(education, '0.studyType') ?? getValueByPath(education, '0.degree')),
-  },
-  {
-    slot: 'educationField',
-    resolver: ({ education }) =>
-      coerceString(getValueByPath(education, '0.area') ?? getValueByPath(education, '0.major')),
-  },
-  {
-    slot: 'educationStartDate',
-    resolver: ({ education }) => normalizeDate(getValueByPath(education, '0.startDate')),
-  },
-  {
-    slot: 'educationEndDate',
-    resolver: ({ education }) => normalizeDate(getValueByPath(education, '0.endDate')),
-  },
-  {
-    slot: 'educationGpa',
-    resolver: ({ education }) => coerceString(getValueByPath(education, '0.score') ?? getValueByPath(education, '0.gpa')),
-  },
-  {
-    slot: 'expectedSalary',
-    resolver: ({ basics, custom }) =>
-      coerceString(basics?.expectedSalary ?? basics?.salary ?? custom?.expectedSalary ?? custom?.salaryExpectation),
-  },
-  {
-    slot: 'preferredLocation',
-    resolver: ({ basics, custom }) => composeLocation(extractObject(custom?.preferredLocation) ?? extractObject(basics?.location)),
-  },
-  {
-    slot: 'availabilityDate',
-    resolver: ({ basics, custom }) =>
-      normalizeDate(basics?.availabilityDate ?? basics?.startDate ?? custom?.availabilityDate),
-  },
-  {
-    slot: 'jobType',
-    resolver: ({ basics, custom }) =>
-      normalizeEnum(basics?.employmentType ?? basics?.jobType ?? custom?.jobType, 'jobType') ??
-      coerceString(basics?.employmentType ?? basics?.jobType ?? custom?.jobType),
-  },
-  {
-    slot: 'skills',
-    resolver: ({ resume }) => {
-      const entries = toPrimaryArray(resume?.skills).map((entry) => extractObject(entry));
-      if (entries.length === 0) {
-        return undefined;
-      }
-      const tokens = entries
-        .map((entry) => {
-          if (!entry) {
-            return undefined;
-          }
-          const name = coerceString(entry.name);
-          const keywords = Array.isArray(entry.keywords)
-            ? (entry.keywords as unknown[]).map((item) => coerceString(item)).filter(Boolean)
-            : [];
-          const combined = [name, ...keywords].filter(Boolean) as string[];
-          if (combined.length === 0) {
-            return undefined;
-          }
-          return combined.join(', ');
-        })
-        .filter(Boolean);
-      if (tokens.length === 0) {
-        return undefined;
-      }
-      return tokens.join(' | ');
-    },
-  },
+  { slot: 'name', resolver: (p) => read(p.basic?.name) },
+  { slot: 'firstName', resolver: (p) => splitName(p.basic?.name ?? '').firstName },
+  { slot: 'lastName', resolver: (p) => splitName(p.basic?.name ?? '').lastName },
+  { slot: 'email', resolver: (p) => read(p.basic?.email) },
+  { slot: 'phone', resolver: (p) => read(p.basic?.phone) },
+  { slot: 'gender', resolver: (p) => read(p.basic?.gender) },
+  { slot: 'birthDate', resolver: (p) => normalizeDate(p.basic?.birthDate) },
+  { slot: 'city', resolver: (p) => read(p.basic?.city) },
+  { slot: 'address', resolver: (p) => read(p.basic?.address) },
+  { slot: 'website', resolver: (p) => read(p.links?.blog) ?? read(p.links?.portfolio) },
+  { slot: 'linkedin', resolver: (p) => read(p.links?.linkedin) },
+  { slot: 'github', resolver: (p) => read(p.links?.github) },
+  { slot: 'summary', resolver: (p) => read(p.texts?.selfIntro) },
+  { slot: 'headline', resolver: (p) => read(p.intention?.position) },
+
+  { slot: 'educationSchool', resolver: (p) => read(p.education?.school) },
+  { slot: 'educationDegree', resolver: (p) => read(p.education?.degree) },
+  { slot: 'educationField', resolver: (p) => read(p.education?.major) },
+  { slot: 'educationStartDate', resolver: (p) => normalizeDate(p.education?.enrollmentDate) },
+  { slot: 'educationEndDate', resolver: (p) => normalizeDate(p.education?.graduationDate) },
+  { slot: 'educationGpa', resolver: (p) => read(p.education?.gpa) ?? read(p.education?.ranking) },
+
+  { slot: 'expectedSalary', resolver: (p) => read(p.intention?.expectedSalary) },
+  { slot: 'preferredLocation', resolver: (p) => read(p.intention?.expectedCity) },
+  { slot: 'availabilityDate', resolver: (p) => normalizeDate(p.intention?.availability) },
+  { slot: 'jobType', resolver: (p) => read(p.intention?.jobType) },
+  { slot: 'skills', resolver: (p) => read(p.texts?.skills) },
 ];
 
-export function buildSlotValues(profile: ProfileRecord | null | undefined): SlotValueMap {
+export function buildSlotValues(profile: ProfileRecord | CnProfile | null | undefined): SlotValueMap {
   if (!profile) {
     return {};
   }
 
-  const resume = extractObject(profile.resume);
-  const basics = extractObject(resume?.basics);
-  const location = extractObject(basics?.location);
-  const work = toPrimaryArray(resume?.work).map((entry) => extractObject(entry) ?? {});
-  const education = toPrimaryArray(resume?.education).map((entry) => extractObject(entry) ?? {});
-  const meta = extractObject(resume?.meta);
-  const custom = mergeCustomSources([
-    extractObject((profile as { custom?: unknown }).custom),
-    resume ? extractObject((resume as { custom?: unknown }).custom) : undefined,
-    extractObject(meta?.custom),
-  ]);
-
-  const context: SlotContext = {
-    profile,
-    resume,
-    basics,
-    location,
-    work,
-    education,
-    meta,
-    custom,
-  };
-
   const slots: SlotValueMap = {};
-
   for (const definition of SLOT_DEFINITIONS) {
     if (slots[definition.slot]) {
       continue;
     }
-    const value = definition.resolver(context);
+    const value = definition.resolver(profile);
     if (value) {
       slots[definition.slot] = value;
     }
   }
-
   return slots;
 }
 
-function mergeCustomSources(sources: Array<Record<string, unknown> | undefined>): Record<string, unknown> | undefined {
-  const merged: Record<string, unknown> = {};
-  for (const source of sources) {
-    if (!source) {
-      continue;
-    }
-    Object.assign(merged, source);
+/**
+ * custom 的「问题 -> 答案」兜底表。表单字段没匹配到任何 slot 时，
+ * 用页面标签直接查这张表（见 shared/apply/manualValues.ts）。
+ */
+export function buildCustomAnswers(
+  profile: ProfileRecord | CnProfile | null | undefined,
+): Record<string, string> {
+  if (!profile?.custom) {
+    return {};
   }
-  return Object.keys(merged).length > 0 ? merged : undefined;
-}
-
-function extractObject(value: unknown): Record<string, unknown> | undefined {
-  if (value && typeof value === 'object' && !Array.isArray(value)) {
-    return value as Record<string, unknown>;
-  }
-  return undefined;
-}
-
-function deriveNameParts(basics: Record<string, unknown> | undefined): {
-  firstName?: string;
-  lastName?: string;
-} {
-  const result: { firstName?: string; lastName?: string } = {};
-  if (!basics) {
-    return result;
-  }
-
-  const firstName = readString(
-    basics['firstName'] ?? basics['givenName'] ?? basics['given_name'] ?? basics['first_name'],
-  );
-  const lastName = readString(
-    basics['lastName'] ??
-      basics['familyName'] ??
-      basics['family_name'] ??
-      basics['surname'] ??
-      basics['last_name'],
-  );
-  if (firstName) {
-    result.firstName = firstName;
-  }
-  if (lastName) {
-    result.lastName = lastName;
-  }
-
-  if (!result.firstName || !result.lastName) {
-    const name = readString(basics['name']);
-    if (name) {
-      const parts = name.trim().split(/\s+/);
-      if (parts.length > 0 && !result.firstName) {
-        result.firstName = parts[0];
-      }
-      if (parts.length > 1 && !result.lastName) {
-        result.lastName = parts[parts.length - 1];
-      }
-    }
-  }
-
-  return result;
-}
-
-function collectProfiles(entries: unknown[]): { linkedin?: string; github?: string } {
-  const result: { linkedin?: string; github?: string } = {};
-  for (const entry of entries) {
-    if (!entry || typeof entry !== 'object') {
-      continue;
-    }
-    const record = entry as Record<string, unknown>;
-    const network = readString(record.network)?.toLowerCase();
-    const url = readString(record.url) ?? buildProfileUrl(record);
-    if (!network || !url) {
-      continue;
-    }
-    if (!result.linkedin && network.includes('linkedin')) {
-      result.linkedin = url;
-    } else if (!result.github && network.includes('github')) {
-      result.github = url;
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(profile.custom)) {
+    if (typeof value === 'string' && value.trim()) {
+      result[key.trim()] = value.trim();
     }
   }
   return result;
 }
 
-function buildProfileUrl(record: Record<string, unknown>): string | undefined {
-  const network = readString(record.network);
-  const username = readString(record.username ?? record.user ?? record.handle);
-  if (!network || !username) {
-    return undefined;
-  }
-  const lower = network.toLowerCase();
-  if (lower.includes('linkedin')) {
-    return `https://www.linkedin.com/in/${username.replace(/^\//, '')}`;
-  }
-  if (lower.includes('github')) {
-    return `https://github.com/${username.replace(/^\//, '')}`;
-  }
-  return undefined;
-}
-
-function readString(value: unknown): string | undefined {
-  if (typeof value === 'string' && value.trim().length > 0) {
-    return value.trim();
-  }
-  return undefined;
-}
-
-function joinLocation(parts: Array<unknown>): string | undefined {
-  const tokens = parts
-    .map((part) => coerceString(part))
-    .filter(Boolean) as string[];
-  if (tokens.length === 0) {
-    return undefined;
-  }
-  return tokens.join(', ');
-}
-
-function composeLocation(record: Record<string, unknown> | undefined): string | undefined {
-  if (!record) {
-    return undefined;
-  }
-  const tokens = [
-    coerceString(record.city),
-    coerceString(record.region ?? record.state),
-    coerceString(record.country),
-  ].filter(Boolean) as string[];
-  if (tokens.length === 0) {
-    return undefined;
-  }
-  return tokens.join(', ');
+function read(value: unknown): string | undefined {
+  return coerceString(value);
 }

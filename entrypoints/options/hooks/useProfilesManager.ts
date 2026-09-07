@@ -17,6 +17,8 @@ import {
   createOnDeviceProvider,
   createOpenAIProvider,
 } from '../../../shared/storage/settings';
+import { cnProfileFieldsFromResume, resumeFromCnProfile } from '../../../shared/schema/cnProfileBridge';
+import { createEmptyProfile } from '../../../shared/schema/cnProfile';
 import resumeSchema from '../../../shared/schema/jsonresume-v1.llm.json';
 import { validateResume } from '../../../shared/validate';
 import type {
@@ -70,6 +72,7 @@ interface UseProfilesManagerResult {
   profilesState: ProfilesState;
   profilesData: ProfilesCardProfile[];
   selectedProfile: ProfileRecord | null;
+  refreshProfiles: (preferredId?: string) => Promise<void>;
   validationErrors: string[];
   status: StatusState;
   errorDetails: string | null;
@@ -187,9 +190,9 @@ export function useProfilesManager({
       setRawText('');
       return;
     }
-    const values = resumeToFormValues(selectedProfile.resume);
+    const values = resumeToFormValues(resumeFromCnProfile(selectedProfile));
     form.reset(values);
-    setRawText(selectedProfile.rawText);
+    setRawText(selectedProfile.rawText ?? '');
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProfile]);
 
@@ -228,7 +231,7 @@ export function useProfilesManager({
 
         const fileRef = await storeFile(selectedProfile.id, file);
 
-        let resumeResult = selectedProfile.resume;
+        let resumeResult = resumeFromCnProfile(selectedProfile);
         let providerSnapshot = selectedProfile.provider;
         let parsedAt = selectedProfile.parsedAt;
         let validation = selectedProfile.validation;
@@ -330,7 +333,7 @@ export function useProfilesManager({
           ...selectedProfile,
           sourceFile: fileRef,
           rawText: text,
-          resume: resumeResult,
+          ...cnProfileFieldsFromResume(resumeResult),
           provider: providerSnapshot,
           parsedAt,
           validation,
@@ -470,7 +473,7 @@ export function useProfilesManager({
 
       const updated: ProfileRecord = {
         ...selectedProfile,
-        resume: mergedResume,
+        ...cnProfileFieldsFromResume(mergedResume),
         provider: snapshot,
         parsedAt: new Date().toISOString(),
         validation: {
@@ -538,7 +541,7 @@ export function useProfilesManager({
 
         const updated: ProfileRecord = {
           ...selectedProfile,
-          resume: resumePayload,
+          ...(resumePayload ? cnProfileFieldsFromResume(resumePayload) : {}),
           parsedAt: resumePayload ? new Date().toISOString() : undefined,
           validation: resumePayload
             ? {
@@ -571,7 +574,7 @@ export function useProfilesManager({
       form.reset(empty);
       return;
     }
-    const values = resumeToFormValues(selectedProfile.resume);
+    const values = resumeToFormValues(resumeFromCnProfile(selectedProfile));
     form.reset(values);
   }, [form, selectedProfile]);
 
@@ -612,9 +615,7 @@ export function useProfilesManager({
   const handleCreateProfile = useCallback(async () => {
     const id = crypto.randomUUID();
     const profile: ProfileRecord = {
-      id,
-      createdAt: new Date().toISOString(),
-      resume: {},
+      ...createEmptyProfile(id, t('options.profileForm.newProfileName')),
       rawText: '',
       sourceFile: undefined,
     };
@@ -680,6 +681,7 @@ export function useProfilesManager({
     profilesState,
     profilesData,
     selectedProfile,
+    refreshProfiles,
     validationErrors,
     status,
     errorDetails,

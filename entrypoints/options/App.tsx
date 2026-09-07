@@ -25,6 +25,7 @@ import { useMediaQuery } from '@mantine/hooks';
 import { Cpu, IdCard, PanelRightOpen, SlidersHorizontal, Sparkles, WandSparkles } from 'lucide-react';
 import { notifications } from '@mantine/notifications';
 import { ProfilesCard } from './components/ProfilesCard';
+import { CnProfileJsonCard } from './components/CnProfileJsonCard';
 import { ProviderCard } from './components/ProviderCard';
 import { AdaptersCard } from './components/AdaptersCard';
 import { AutofillCard } from './components/AutofillCard';
@@ -100,6 +101,7 @@ export default function App() {
     profilesState,
     profilesData,
     selectedProfile,
+    refreshProfiles,
     validationErrors,
     status,
     errorDetails,
@@ -482,7 +484,12 @@ export default function App() {
               className={sectionClassName('section-profiles')}
             >
               <Stack gap="md">
-                {providerConfigured ? (
+                <>
+                  {!providerConfigured && (
+                    <Alert variant="light" color="blue" mb="md">
+                      <Text fz="sm">{t('options.profiles.aiOptional.description')}</Text>
+                    </Alert>
+                  )}
                   <Stack gap="xl">
                     <ProfilesCard
                       title={t('onboarding.manage.heading')}
@@ -500,6 +507,15 @@ export default function App() {
                       onCreate={handleCreateProfile}
                       onSelect={handleSelectProfile}
                       onDelete={handleDeleteProfile}
+                    />
+
+                    <CnProfileJsonCard
+                      profile={selectedProfile}
+                      onSaved={(id) => {
+                        void refreshProfiles(id);
+                        handleSelectProfile(id);
+                      }}
+                      t={t}
                     />
 
                     <Stack gap="md">
@@ -550,24 +566,7 @@ export default function App() {
                       )}
                     </Stack>
                   </Stack>
-                ) : (
-                  <Paper withBorder radius="lg" p="xl" shadow="sm">
-                    <Stack gap="sm" align="center">
-                      <ThemeIcon size={48} radius="xl" variant="light" color="indigo">
-                        <IdCard size={22} strokeWidth={2} />
-                      </ThemeIcon>
-                      <Text fw={600} fz="lg" ta="center">
-                        {t('options.profiles.gate.title')}
-                      </Text>
-                      <Text fz="sm" c="dimmed" ta="center">
-                        {t('options.profiles.gate.description')}
-                      </Text>
-                      <Button onClick={() => handleScrollTo('section-provider')}>
-                        {t('options.profiles.gate.cta')}
-                      </Button>
-                    </Stack>
-                  </Paper>
-                )}
+                </>
               </Stack>
             </Box>
 
