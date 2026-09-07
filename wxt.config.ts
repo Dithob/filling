@@ -34,11 +34,8 @@ export default defineConfig({
       'https://*.smartrecruiters.com/*',
       'https://*.workable.com/*',
     ],
-    web_accessible_resources: [
-      {
-        resources: ['pdf.worker.mjs'],
-        matches: ['<all_urls>'],
-      },
-    ],
+    // No web_accessible_resources needed: the pdf.js worker is resolved through
+    // Vite's `?worker&url` import inside shared/pdf/extractText.ts and is only
+    // used from the extension's own options page, not from content scripts.
   },
 });

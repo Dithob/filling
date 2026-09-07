@@ -14,6 +14,9 @@ stats-*.json
 .wxt
 web-ext.config.ts
 
+# WorkBuddy workspace data (not part of the extension source)
+.workbuddy
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
