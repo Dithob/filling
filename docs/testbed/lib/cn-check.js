@@ -73,8 +73,8 @@
   function collectTargets(root, seen) {
     const nodes = Array.from(root.querySelectorAll('*'));
     for (const node of nodes) {
-      if (node.hasAttribute && node.hasAttribute('data-path')) {
-        const path = node.getAttribute('data-path');
+      if (node.hasAttribute && (node.hasAttribute('data-path') || node.hasAttribute('data-expect-file'))) {
+        const path = node.getAttribute('data-path') ?? `file:${node.getAttribute('name') || 'resume'}`;
         const key = node.type === 'radio' ? `radio:${node.getAttribute('name') || path}` : path;
         if (!seen.has(key)) {
           seen.set(key, node);
@@ -92,6 +92,20 @@
     const seen = collectTargets(document, new Map());
     const results = [];
     for (const node of seen.values()) {
+      if (node.hasAttribute('data-expect-file')) {
+        const attached = node.files && node.files.length > 0 ? node.files[0].name : '';
+        results.push({
+          group: node.getAttribute('data-check-group') || 'now',
+          path: 'file',
+          slot: 'attachments',
+          label: node.getAttribute('data-label') || '简历附件',
+          expected: '已附加简历文件',
+          actual: attached,
+          empty: false,
+          pass: attached.length > 0,
+        });
+        continue;
+      }
       const path = node.getAttribute('data-path');
       const expected = normalize(resolvePath(state.fixture, path));
       const actual = readValue(node);
