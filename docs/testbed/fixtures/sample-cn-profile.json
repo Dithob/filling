@@ -1,0 +1,60 @@
+{
+  "name": "测试方案（算法岗）",
+  "basic": {
+    "name": "张三",
+    "gender": "男",
+    "birthDate": "2002-05-10",
+    "nation": "汉族",
+    "politicalStatus": "中共党员",
+    "idCard": "110101200001011234",
+    "phone": "13800000000",
+    "email": "zhangsan@example.com",
+    "wechat": "zhangsan_wx",
+    "qq": "12345678",
+    "city": "杭州",
+    "address": "浙江省杭州市西湖区文一西路 100 号",
+    "hometown": "浙江宁波",
+    "emergencyContact": "李四",
+    "emergencyPhone": "13900000000",
+    "englishLevel": "CET-6"
+  },
+  "education": {
+    "school": "示例大学",
+    "degree": "硕士",
+    "major": "计算机科学与技术",
+    "enrollmentDate": "2024-09-01",
+    "graduationDate": "2027-06-30",
+    "gpa": "3.8",
+    "ranking": "5/120",
+    "fullTime": "全日制"
+  },
+  "intention": {
+    "position": "算法工程师",
+    "expectedCity": "杭州",
+    "expectedSalary": "25k-35k",
+    "availability": "2027-07-01",
+    "internshipDuration": "6个月",
+    "jobType": "全职"
+  },
+  "links": {
+    "github": "https://github.com/zhangsan",
+    "blog": "https://zhangsan.dev",
+    "portfolio": "https://zhangsan.dev/portfolio",
+    "linkedin": "https://linkedin.com/in/zhangsan"
+  },
+  "texts": {
+    "selfIntro": "熟悉深度学习与推荐系统，有两年竞赛经历。",
+    "projectExp": "推荐系统\n负责召回与排序模型\n\n知识图谱\n负责实体对齐",
+    "internshipExp": "某互联网公司\n后端开发实习生",
+    "campusExp": "学生会技术部\n负责活动报名系统",
+    "awards": "国家奖学金 · 教育部 · 2025",
+    "skills": "Python, PyTorch, TypeScript",
+    "researchDirection": "推荐系统",
+    "hobbies": "长跑、摄影"
+  },
+  "attachments": {},
+  "custom": {
+    "是否服从调剂": "是",
+    "你为什么选择我们": "贵司在推荐系统方向的积累与我的研究方向一致"
+  }
+}

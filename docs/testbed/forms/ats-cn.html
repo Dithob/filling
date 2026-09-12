@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>国内校招投递表单 · Fillo Testbed</title>
+    <link rel="stylesheet" href="../lib/styles.css" />
+    <style>
+      .cn-section {
+        border: 1px solid #d7dbe0;
+        border-radius: 10px;
+        padding: 16px 20px 20px;
+        margin: 0 0 20px;
+        background: #fff;
+      }
+      .cn-section > legend {
+        font-weight: 600;
+        padding: 0 6px;
+      }
+      .cn-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 12px 20px;
+      }
+      /* 模仿 Element/Ant 的 div 包裹结构，标签不在 label[for] 上 */
+      .el-form-item {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .el-form-item > .el-form-item__label {
+        font-size: 13px;
+        color: #4b5563;
+      }
+      .el-form-item input,
+      .el-form-item select,
+      .el-form-item textarea {
+        padding: 6px 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        font-size: 14px;
+      }
+      .cn-radio-group {
+        display: flex;
+        gap: 14px;
+        align-items: center;
+        font-size: 14px;
+      }
+      .cn-combo {
+        position: relative;
+      }
+      .cn-combo-trigger {
+        width: 100%;
+        text-align: left;
+        padding: 6px 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .cn-combo-list {
+        position: absolute;
+        z-index: 5;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        margin: 0;
+        padding: 4px 0;
+        list-style: none;
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+        display: none;
+      }
+      .cn-combo[data-open='true'] .cn-combo-list {
+        display: block;
+      }
+      .cn-combo-list li {
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .cn-combo-list li:hover {
+        background: #eef2ff;
+      }
+      .cn-editor {
+        min-height: 84px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 8px;
+        font-size: 14px;
+        background: #fff;
+      }
+      .cn-note {
+        font-size: 13px;
+        color: #6b7280;
+        margin: 0 0 18px;
+      }
+
+      .cn-check-panel {
+        position: fixed;
+        top: 12px;
+        right: 12px;
+        width: 420px;
+        max-height: calc(100vh - 24px);
+        display: flex;
+        flex-direction: column;
+        background: #0f172a;
+        color: #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.35);
+        font-size: 12px;
+        z-index: 9999;
+      }
+      .cn-check-panel header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-bottom: 1px solid #1e293b;
+        font-weight: 600;
+      }
+      .cn-check-panel header button {
+        background: #1d4ed8;
+        color: #fff;
+        border: 0;
+        border-radius: 6px;
+        padding: 4px 10px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+      .cn-check-panel p[data-role='summary'] {
+        margin: 0;
+        padding: 10px 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        border-bottom: 1px solid #1e293b;
+      }
+      .cn-check-table-wrap {
+        overflow: auto;
+        flex: 1;
+      }
+      .cn-check-panel table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      .cn-check-panel th,
+      .cn-check-panel td {
+        text-align: left;
+        padding: 5px 10px;
+        border-bottom: 1px solid #1e293b;
+        vertical-align: top;
+      }
+      .cn-check-panel code {
+        color: #93c5fd;
+      }
+      .cn-check-pass td:first-child {
+        border-left: 3px solid #22c55e;
+      }
+      .cn-check-fail td:first-child {
+        border-left: 3px solid #ef4444;
+      }
+      .cn-check-skip td:first-child {
+        border-left: 3px solid #64748b;
+        opacity: 0.7;
+      }
+      .cn-check-panel footer {
+        padding: 8px 12px;
+        border-top: 1px solid #1e293b;
+        color: #94a3b8;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>国内校招投递表单</h1>
+      <p class="testbed-banner">
+        模仿 Moka / 北森系校招页的字段与 DOM 结构：中文标签、div 包裹、枚举下拉、日期、附件、富文本、Shadow DOM。
+        右上角自检面板会用 <code>fixtures/sample-cn-profile.json</code> 比对填入结果。
+      </p>
+      <p class="cn-note">
+        先在工作台导入该夹具，再点侧边栏「填写匹配字段」。<strong>当前应通过</strong>指本阶段就该填中的原生控件；
+        <strong>阶段 3 目标控件</strong>（富文本 / 自定义下拉 / Shadow DOM / 只读日期）在填充器增强后才应通过。
+      </p>
+
+      <form id="cn-apply-form">
+        <fieldset class="cn-section">
+          <legend>基本信息</legend>
+          <div class="cn-grid">
+            <label>
+              姓名
+              <input type="text" name="applicantName" data-slot="name" data-path="basic.name" />
+            </label>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">性别</span>
+              <div class="cn-radio-group">
+                <label
+                  ><input
+                    type="radio"
+                    name="gender"
+                    value="男"
+                    data-slot="gender"
+                    data-path="basic.gender"
+                    data-check-group="stage3"
+                  />
+                  男</label
+                >
+                <label><input type="radio" name="gender" value="女" data-check-group="stage3" /> 女</label>
+              </div>
+            </div>
+
+            <label>
+              出生日期
+              <input type="date" name="birthDate" data-slot="birthDate" data-path="basic.birthDate" />
+            </label>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">民族</span>
+              <select name="nation" data-slot="nation" data-path="basic.nation">
+                <option value="">请选择</option>
+                <option value="han">汉族</option>
+                <option value="hui">回族</option>
+                <option value="man">满族</option>
+                <option value="other">其他</option>
+              </select>
+            </div>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">政治面貌</span>
+              <select name="politicalStatus" data-slot="politicalStatus" data-path="basic.politicalStatus">
+                <option value="">请选择</option>
+                <option value="cpc">中共党员</option>
+                <option value="cpc-probation">中共预备党员</option>
+                <option value="league">共青团员</option>
+                <option value="mass">群众</option>
+              </select>
+            </div>
+
+            <label>
+              身份证号
+              <input type="text" name="idCard" data-slot="idCard" data-path="basic.idCard" maxlength="18" />
+            </label>
+
+            <label>
+              手机号码
+              <input type="tel" name="phone" autocomplete="tel" data-slot="phone" data-path="basic.phone" />
+            </label>
+
+            <label>
+              电子邮箱
+              <input type="email" name="email" autocomplete="email" data-slot="email" data-path="basic.email" />
+            </label>
+
+            <label>
+              微信号
+              <input type="text" name="wechat" data-slot="wechat" data-path="basic.wechat" />
+            </label>
+
+            <label>
+              QQ号
+              <input type="text" name="qq" data-slot="qq" data-path="basic.qq" />
+            </label>
+
+            <label>
+              籍贯
+              <input type="text" name="hometown" data-slot="hometown" data-path="basic.hometown" />
+            </label>
+
+            <label>
+              现居城市
+              <input type="text" name="city" data-slot="city" data-path="basic.city" />
+            </label>
+
+            <label>
+              通讯地址
+              <input type="text" name="address" data-slot="address" data-path="basic.address" />
+            </label>
+
+            <label>
+              紧急联系人
+              <input type="text" name="emergencyContact" data-slot="emergencyContact" data-path="basic.emergencyContact" />
+            </label>
+
+            <label>
+              紧急联系电话
+              <input type="tel" name="emergencyPhone" data-slot="emergencyPhone" data-path="basic.emergencyPhone" />
+            </label>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">英语水平</span>
+              <select name="englishLevel" data-slot="englishLevel" data-path="basic.englishLevel">
+                <option value="">请选择</option>
+                <option value="cet4">CET-4</option>
+                <option value="cet6">CET-6</option>
+                <option value="ielts">雅思</option>
+                <option value="toefl">托福</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="cn-section">
+          <legend>教育经历</legend>
+          <div class="cn-grid">
+            <label>
+              毕业院校
+              <input type="text" name="school" data-slot="educationSchool" data-path="education.school" />
+            </label>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">学历</span>
+              <select name="degree" data-slot="educationDegree" data-path="education.degree">
+                <option value="">请选择</option>
+                <option value="associate">大专</option>
+                <option value="bachelor">本科</option>
+                <option value="master">硕士</option>
+                <option value="phd">博士</option>
+              </select>
+            </div>
+
+            <label>
+              专业
+              <input type="text" name="major" data-slot="educationField" data-path="education.major" />
+            </label>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">培养方式</span>
+              <select name="fullTime" data-slot="educationFullTime" data-path="education.fullTime">
+                <option value="">请选择</option>
+                <option value="full">全日制</option>
+                <option value="part">非全日制</option>
+              </select>
+            </div>
+
+            <label>
+              入学时间
+              <input type="date" name="enrollmentDate" data-slot="educationStartDate" data-path="education.enrollmentDate" />
+            </label>
+
+            <label>
+              毕业时间
+              <input type="date" name="graduationDate" data-slot="educationEndDate" data-path="education.graduationDate" />
+            </label>
+
+            <label>
+              专业排名
+              <input type="text" name="ranking" data-slot="educationRanking" data-path="education.ranking" />
+            </label>
+
+            <label>
+              GPA
+              <input type="text" name="gpa" data-slot="educationGpa" data-path="education.gpa" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="cn-section">
+          <legend>求职意向</legend>
+          <div class="cn-grid">
+            <label>
+              应聘岗位
+              <input type="text" name="position" data-slot="headline" data-path="intention.position" />
+            </label>
+
+            <label>
+              期望城市
+              <input type="text" name="expectedCity" data-slot="preferredLocation" data-path="intention.expectedCity" />
+            </label>
+
+            <label>
+              期望薪资
+              <input type="text" name="expectedSalary" data-slot="expectedSalary" data-path="intention.expectedSalary" />
+            </label>
+
+            <label>
+              到岗时间
+              <input type="text" name="availability" placeholder="YYYY-MM-DD" data-slot="availabilityDate" data-path="intention.availability" />
+            </label>
+
+            <label>
+              可实习时长
+              <input type="text" name="internshipDuration" data-slot="internshipDuration" data-path="intention.internshipDuration" />
+            </label>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">工作性质</span>
+              <select name="jobType" data-slot="jobType" data-path="intention.jobType">
+                <option value="">请选择</option>
+                <option value="fulltime">全职</option>
+                <option value="intern">实习</option>
+                <option value="parttime">兼职</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="cn-section">
+          <legend>经历与开放题</legend>
+          <div class="cn-grid">
+            <label>
+              项目经历
+              <textarea name="projectExp" rows="4" data-slot="projectExp" data-path="texts.projectExp"></textarea>
+            </label>
+
+            <label>
+              实习经历
+              <textarea name="internshipExp" rows="3" data-slot="internshipExp" data-path="texts.internshipExp"></textarea>
+            </label>
+
+            <label>
+              校园经历
+              <textarea name="campusExp" rows="3" data-slot="campusExp" data-path="texts.campusExp"></textarea>
+            </label>
+
+            <label>
+              获奖情况
+              <textarea name="awards" rows="3" data-slot="awards" data-path="texts.awards"></textarea>
+            </label>
+
+            <label>
+              研究方向
+              <input type="text" name="researchDirection" data-slot="researchDirection" data-path="texts.researchDirection" />
+            </label>
+
+            <label>
+              兴趣爱好
+              <input type="text" name="hobbies" data-slot="hobbies" data-path="texts.hobbies" />
+            </label>
+
+            <label>
+              技能特长
+              <textarea name="skills" rows="3" data-slot="skills" data-path="texts.skills"></textarea>
+            </label>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">是否服从调剂</span>
+              <select name="adjustment" data-slot="custom" data-path="custom.是否服从调剂">
+                <option value="">请选择</option>
+                <option value="yes">是</option>
+                <option value="no">否</option>
+              </select>
+            </div>
+
+            <label>
+              你为什么选择我们
+              <textarea name="whyUs" rows="3" data-slot="custom" data-path="custom.你为什么选择我们"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="cn-section">
+          <legend>阶段 3 目标控件（当前预期失败）</legend>
+          <div class="cn-grid">
+            <div class="el-form-item">
+              <span class="el-form-item__label">自我介绍（富文本）</span>
+              <div
+                class="cn-editor"
+                contenteditable="true"
+                role="textbox"
+                data-slot="summary"
+                data-path="texts.selfIntro"
+                data-check-group="stage3"
+              ></div>
+            </div>
+
+            <div class="el-form-item cn-combo" data-combo>
+              <span class="el-form-item__label">期望城市（自定义下拉）</span>
+              <button type="button" class="cn-combo-trigger" data-combo-trigger aria-haspopup="listbox" aria-expanded="false">
+                请选择
+              </button>
+              <ul class="cn-combo-list" role="listbox">
+                <li role="option">北京</li>
+                <li role="option">上海</li>
+                <li role="option">杭州</li>
+                <li role="option">深圳</li>
+              </ul>
+              <input
+                type="hidden"
+                name="expectedCityCombo"
+                data-slot="preferredLocation"
+                data-path="intention.expectedCity"
+                data-check-group="stage3"
+                data-value-target="[data-combo-trigger]"
+              />
+            </div>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">出生日期（只读日期控件）</span>
+              <input
+                type="text"
+                name="birthDateReadonly"
+                readonly
+                placeholder="请选择日期"
+                data-slot="birthDate"
+                data-path="basic.birthDate"
+                data-check-group="stage3"
+              />
+            </div>
+
+            <div class="el-form-item">
+              <span class="el-form-item__label">简历附件</span>
+              <input type="file" name="resume" accept=".pdf,.doc,.docx" data-check-group="stage3" />
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="cn-section">
+          <legend>Shadow DOM 内的字段</legend>
+          <div id="shadow-host"></div>
+        </fieldset>
+      </form>
+    </main>
+
+    <script>
+      // 模拟 Web Component 包裹的表单控件：扫描器必须穿透 open shadow root 才能看到。
+      const host = document.getElementById('shadow-host');
+      const shadow = host.attachShadow({ mode: 'open' });
+      shadow.innerHTML = `
+        <style>
+          .el-form-item { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+          .el-form-item__label { font-size: 13px; color: #4b5563; }
+          input { padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; }
+        </style>
+        <div class="el-form-item">
+          <span class="el-form-item__label">GitHub</span>
+          <input type="text" name="github" data-slot="github" data-path="links.github" data-check-group="stage3" />
+        </div>
+        <div class="el-form-item">
+          <span class="el-form-item__label">个人网站</span>
+          <input type="text" name="blog" data-slot="website" data-path="links.blog" data-check-group="stage3" />
+        </div>
+      `;
+
+      // 自定义下拉：点击展开、选中后写回触发器文案并派发事件。
+      document.querySelectorAll('[data-combo]').forEach((combo) => {
+        const trigger = combo.querySelector('[data-combo-trigger]');
+        const list = combo.querySelector('.cn-combo-list');
+        trigger.addEventListener('click', () => {
+          const open = combo.getAttribute('data-open') === 'true';
+          combo.setAttribute('data-open', String(!open));
+          trigger.setAttribute('aria-expanded', String(!open));
+        });
+        list.querySelectorAll('[role="option"]').forEach((option) => {
+          option.addEventListener('click', () => {
+            trigger.textContent = option.textContent.trim();
+            combo.setAttribute('data-open', 'false');
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        });
+      });
+    </script>
+    <script src="../lib/cn-check.js"></script>
+  </body>
+</html>
