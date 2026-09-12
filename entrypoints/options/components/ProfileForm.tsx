@@ -13,6 +13,12 @@ import {
 import { Plus, Trash2 } from 'lucide-react';
 import { FieldArrayPath, FieldPath, FieldPathValue, UseFormReturn, useFieldArray } from 'react-hook-form';
 import type { ResumeExtractionResult } from '@/shared/types';
+import {
+  customEntriesToRecord,
+  mergeCustomEntries,
+  parseCustomEntries,
+  type CustomEntry,
+} from '../hooks/profileFormMeta';
 
 export interface ResumeFormValues {
   basics: {
@@ -118,6 +124,12 @@ export interface ResumeFormValues {
     canonical: string;
     version: string;
     lastModified: string;
+    /**
+     * 扩展字段：民族 / 政治面貌 / 身份证号 这类 JSON Resume 没有的字段，以及
+     * 「页面问题 -> 答案」兜底表，都以键值对存在这里。用数组是为了配合 useFieldArray，
+     * 落盘时再转回 Record（见 formValuesToResume）。
+     */
+    custom: CustomEntry[];
   };
 }
 
@@ -155,6 +167,7 @@ export function createEmptyResumeFormValues(): ResumeFormValues {
       canonical: '',
       version: '',
       lastModified: '',
+      custom: [],
     },
   };
 }
@@ -1591,6 +1604,8 @@ function ReferencesSection({ form, disabled }: SectionProps) {
 
 function MetaSection({ form, disabled }: SectionProps) {
   const { t } = i18n;
+  const customArray = useResumeArrayField(form, 'meta.custom');
+
   return (
     <Stack gap="md">
       <TextInput
@@ -1610,6 +1625,57 @@ function MetaSection({ form, disabled }: SectionProps) {
         disabled={disabled}
         {...form.register('meta.lastModified')}
       />
+
+      <Stack gap="sm">
+        <Group justify="space-between" align="center">
+          <Stack gap={2}>
+            <Text fz="sm" fw={600}>
+              {t('options.profileForm.meta.custom.heading')}
+            </Text>
+            <Text fz="xs" c="dimmed">
+              {t('options.profileForm.meta.custom.description')}
+            </Text>
+          </Stack>
+          <Button
+            variant="light"
+            leftSection={<Plus size={16} />}
+            onClick={() => customArray.append({ key: '', value: '' })}
+            disabled={disabled}
+          >
+            {t('options.profileForm.meta.custom.add')}
+          </Button>
+        </Group>
+        {customArray.items.length === 0 && (
+          <Text fz="sm" c="dimmed">
+            {t('options.profileForm.meta.custom.empty')}
+          </Text>
+        )}
+        {customArray.fields.map((entryField, index) => (
+          <Group key={entryField.id} align="flex-end" wrap="nowrap">
+            <TextInput
+              label={t('options.profileForm.meta.custom.key')}
+              style={{ flex: 1 }}
+              disabled={disabled}
+              {...form.register(`meta.custom.${index}.key` as const)}
+            />
+            <TextInput
+              label={t('options.profileForm.meta.custom.value')}
+              style={{ flex: 1.4 }}
+              disabled={disabled}
+              {...form.register(`meta.custom.${index}.value` as const)}
+            />
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              onClick={() => customArray.remove(index)}
+              disabled={disabled}
+              aria-label={t('options.profileForm.meta.custom.remove')}
+            >
+              <Trash2 size={16} />
+            </ActionIcon>
+          </Group>
+        ))}
+      </Stack>
     </Stack>
   );
 }
@@ -1705,6 +1771,7 @@ export function resumeToFormValues(source: unknown): ResumeFormValues {
     base.meta.canonical = readString(meta.canonical);
     base.meta.version = readString(meta.version);
     base.meta.lastModified = readString(meta.lastModified);
+    base.meta.custom = parseCustomEntries(meta.custom);
   }
 
   return base;
@@ -1895,6 +1962,8 @@ export function formValuesToResume(values: ResumeFormValues): ResumeExtractionRe
   assignIf(meta, 'canonical', values.meta.canonical);
   assignIf(meta, 'version', values.meta.version);
   assignIf(meta, 'lastModified', values.meta.lastModified);
+  // 扩展字段始终写出（哪怕是空对象），这样清空编辑器就能真的删掉兜底答案。
+  meta.custom = customEntriesToRecord(values.meta.custom);
   if (Object.keys(meta).length > 0) {
     resume.meta = meta;
   }
@@ -1946,6 +2015,7 @@ export function mergeResumeFormValues(
       canonical: preferString(current.meta.canonical, incoming.meta.canonical),
       version: preferString(current.meta.version, incoming.meta.version),
       lastModified: preferString(current.meta.lastModified, incoming.meta.lastModified),
+      custom: mergeCustomEntries(current.meta.custom, incoming.meta.custom),
     },
   };
 }

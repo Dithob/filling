@@ -78,6 +78,141 @@ function mapEnum(value: unknown, table: Record<string, string>): string | undefi
   return text;
 }
 
+/**
+ * `resumeFromCnProfile` 借用 meta.custom 承载这些结构化字段，
+ * 反向转换时不能再把它们当成用户的「问题 -> 答案」兜底项。
+ */
+const RESERVED_CUSTOM_KEYS = new Set([
+  'nation',
+  'politicalStatus',
+  'idCard',
+  'wechat',
+  'qq',
+  'hometown',
+  'emergencyContact',
+  'emergencyPhone',
+  'englishLevel',
+  'ranking',
+  'fullTime',
+  'position',
+  'expectedCity',
+  'expectedSalary',
+  'availabilityDate',
+  'internshipDuration',
+  'jobType',
+  'portfolio',
+  'projectExp',
+  'awards',
+  'researchDirection',
+  'resumeId',
+]);
+
+/**
+ * 把表单回来的 patch 合进已存 profile。
+ *
+ * 关键语义：**patch 里为 `undefined` 的键保留 base 原值**。
+ * `cnProfileDataFromResume` 对「表单不拥有的字段」（民族/政治面貌/身份证号/籍贯/
+ * 微信/QQ/紧急联系人/英语水平/排名/培养方式…）只能吐出 `undefined`，早期实现直接
+ * `{...profile, ...patch}` 整组覆盖，保存一次就把这些字段清空。空字符串 `''` 仍然
+ * 生效，因此用户依旧可以把表单拥有的字段清掉。
+ */
+export function mergeCnProfileData(
+  base: CnProfileData,
+  patch: Partial<CnProfileData> | null | undefined,
+): CnProfileData {
+  if (!patch) {
+    return base;
+  }
+  return {
+    basic: mergeGroup(base.basic, patch.basic),
+    education: mergeGroup(base.education, patch.education),
+    intention: mergeGroup(base.intention, patch.intention),
+    links: mergeGroup(base.links, patch.links),
+    texts: mergeGroup(base.texts, patch.texts),
+    attachments: mergeGroup(base.attachments, patch.attachments),
+    // custom 是表单拥有的一等字段（扩展字段编辑器），整体替换才允许清空。
+    custom: patch.custom ? { ...patch.custom } : { ...base.custom },
+  };
+}
+
+function mergeGroup<T extends object>(base: T, patch: T | undefined): T {
+  if (!patch) {
+    return base;
+  }
+  const merged: Record<string, unknown> = { ...(base as Record<string, unknown>) };
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) {
+      continue;
+    }
+    merged[key] = value;
+  }
+  return merged as T;
+}
+
+/** 把多行文本拆成条目（空行分段），供 projects / awards 回流。 */
+function splitTextBlocks(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+  return value
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+}
+
+function joinProjectEntries(entries: unknown): string | undefined {
+  if (!Array.isArray(entries)) {
+    return undefined;
+  }
+  const blocks: string[] = [];
+  for (const raw of entries) {
+    const entry = asRecord(raw);
+    if (!entry) {
+      continue;
+    }
+    const headerParts = [str(entry.name), formatDateRange(entry.startDate, entry.endDate), str(entry.url)].filter(
+      Boolean,
+    );
+    const highlights = Array.isArray(entry.highlights)
+      ? entry.highlights.map((item) => str(item)).filter((item): item is string => Boolean(item))
+      : [];
+    const body = [str(entry.description), ...highlights.map((item) => `· ${item}`)].filter(Boolean).join('\n');
+    const block = [headerParts.join(' · '), body].filter(Boolean).join('\n');
+    if (block) {
+      blocks.push(block);
+    }
+  }
+  return blocks.length > 0 ? blocks.join('\n\n') : undefined;
+}
+
+function joinAwardEntries(entries: unknown): string | undefined {
+  if (!Array.isArray(entries)) {
+    return undefined;
+  }
+  const blocks: string[] = [];
+  for (const raw of entries) {
+    const entry = asRecord(raw);
+    if (!entry) {
+      continue;
+    }
+    const header = [str(entry.title), str(entry.awarder), str(entry.date)].filter(Boolean).join(' · ');
+    const block = [header, str(entry.summary)].filter(Boolean).join('\n');
+    if (block) {
+      blocks.push(block);
+    }
+  }
+  return blocks.length > 0 ? blocks.join('\n\n') : undefined;
+}
+
+function formatDateRange(start: unknown, end: unknown): string | undefined {
+  const from = str(start);
+  const to = str(end);
+  if (from && to) {
+    return `${from} – ${to}`;
+  }
+  return from ?? to;
+}
+
 export function cnProfileDataFromResume(resume: unknown): CnProfileData {
   const root = asRecord(resume) ?? {};
   const basics = asRecord(root.basics) ?? {};
@@ -126,6 +261,11 @@ export function cnProfileDataFromResume(resume: unknown): CnProfileData {
 
   const customAnswers: Record<string, string> = {};
   for (const [key, value] of Object.entries(custom)) {
+    // 反向映射用这批 key 承载 CnProfile 的结构化字段（见 resumeFromCnProfile 的 extra），
+    // 它们不是用户自定义的「问题 -> 答案」，回灌进 custom 会让扩展字段编辑器塞满噪音。
+    if (RESERVED_CUSTOM_KEYS.has(key)) {
+      continue;
+    }
     const text = str(value);
     if (text) {
       customAnswers[key] = text;
@@ -178,8 +318,9 @@ export function cnProfileDataFromResume(resume: unknown): CnProfileData {
     texts: {
       selfIntro: str(basics.summary),
       skills,
-      projectExp: str(custom.projectExp),
-      awards: str(custom.awards),
+      // 项目/获奖走结构化段落（projects / awards），旧数据回落到 meta.custom。
+      projectExp: joinProjectEntries(root.projects) ?? str(custom.projectExp),
+      awards: joinAwardEntries(root.awards) ?? str(custom.awards),
       researchDirection: str(custom.researchDirection),
     },
     attachments: {
@@ -224,8 +365,6 @@ export function resumeFromCnProfile(profile: CnProfile): Recordish {
   if (intention?.internshipDuration) extra.internshipDuration = intention.internshipDuration;
   if (intention?.jobType) extra.jobType = intention.jobType;
   if (links?.portfolio) extra.portfolio = links.portfolio;
-  if (texts?.projectExp) extra.projectExp = texts.projectExp;
-  if (texts?.awards) extra.awards = texts.awards;
   if (texts?.researchDirection) extra.researchDirection = texts.researchDirection;
   if (profile.attachments?.resumeId) extra.resumeId = profile.attachments.resumeId;
 
@@ -264,6 +403,10 @@ export function resumeFromCnProfile(profile: CnProfile): Recordish {
     skills: texts?.skills
       ? texts.skills.split(/[|,]/).map((token) => ({ name: token.trim() })).filter((entry) => entry.name)
       : [],
+    // 校招简历的项目经历 / 获奖情况在 CnProfile 里是整段文本，这里合成单条目给旧表单一个可编辑入口。
+    // 加入空行分段是为了让「一段文本 -> 多条目」能无损往返（见 splitTextBlocks）。
+    projects: splitTextBlocks(texts?.projectExp).map((block) => ({ description: block })),
+    awards: splitTextBlocks(texts?.awards).map((block) => ({ title: block })),
     meta: {
       custom: extra,
     },

@@ -17,7 +17,11 @@ import {
   createOnDeviceProvider,
   createOpenAIProvider,
 } from '../../../shared/storage/settings';
-import { cnProfileFieldsFromResume, resumeFromCnProfile } from '../../../shared/schema/cnProfileBridge';
+import {
+  cnProfileFieldsFromResume,
+  mergeCnProfileData,
+  resumeFromCnProfile,
+} from '../../../shared/schema/cnProfileBridge';
 import { createEmptyProfile } from '../../../shared/schema/cnProfile';
 import resumeSchema from '../../../shared/schema/jsonresume-v1.llm.json';
 import { validateResume } from '../../../shared/validate';
@@ -331,9 +335,11 @@ export function useProfilesManager({
 
         const updated: ProfileRecord = {
           ...selectedProfile,
+          // merge 而不是整组覆盖：bridge 对「表单不拥有的字段」只能吐 undefined，
+          // 直接展开会把民族 / 政治面貌 / 身份证号 等清空。
+          ...mergeCnProfileData(selectedProfile, cnProfileFieldsFromResume(resumeResult)),
           sourceFile: fileRef,
           rawText: text,
-          ...cnProfileFieldsFromResume(resumeResult),
           provider: providerSnapshot,
           parsedAt,
           validation,
@@ -473,7 +479,7 @@ export function useProfilesManager({
 
       const updated: ProfileRecord = {
         ...selectedProfile,
-        ...cnProfileFieldsFromResume(mergedResume),
+        ...mergeCnProfileData(selectedProfile, cnProfileFieldsFromResume(mergedResume)),
         provider: snapshot,
         parsedAt: new Date().toISOString(),
         validation: {
@@ -541,7 +547,9 @@ export function useProfilesManager({
 
         const updated: ProfileRecord = {
           ...selectedProfile,
-          ...(resumePayload ? cnProfileFieldsFromResume(resumePayload) : {}),
+          ...(resumePayload
+            ? mergeCnProfileData(selectedProfile, cnProfileFieldsFromResume(resumePayload))
+            : {}),
           parsedAt: resumePayload ? new Date().toISOString() : undefined,
           validation: resumePayload
             ? {

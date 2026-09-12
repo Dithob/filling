@@ -302,6 +302,14 @@ options:
       canonical: Canonical URL
       version: Version
       lastModified: Last modified
+      custom:
+        heading: Extra fields
+        description: Values JSON Resume has no slot for (nation, political status, ID number…) plus your own question-to-answer fallbacks. Keys are matched against form labels.
+        add: Add field
+        empty: No extra fields yet.
+        key: Question / field name
+        value: Answer
+        remove: Remove field
     actions:
       reset: Reset changes
       saving: Saving…
