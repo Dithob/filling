@@ -405,7 +405,6 @@ sidepanel:
     manageProfiles: 管理简历
   tabs:
     dom: 字段审核
-    guided: 引导模式
     manual: 手动复制
   states:
     noProfilesOption: 暂无简历
