@@ -11,7 +11,7 @@ import type {
   PromptOptionSlot,
   PromptPreviewRequest,
 } from '../../shared/apply/types';
-import { fillField, triggerClick } from './fill';
+import { fillField, triggerClick, type FillOptions, type FillOutcome } from './fill';
 import type { InternalField } from './fields';
 import { buildFieldForElement, elementHasValue, scanFields } from './fields';
 import { clearOverlay, showHighlight, showPrompt } from './overlay';
@@ -101,6 +101,7 @@ interface SerializedField {
   };
   attributes?: FieldAttributes;
   hasValue: boolean;
+  readOnly?: boolean;
 }
 
 function createAbortError(): Error {
@@ -325,7 +326,7 @@ export default defineContentScript({
           setOverlayAccessAllowed(Boolean(message.allowed));
           break;
         case 'PROMPT_FILL':
-          handlePromptFill(message);
+          void handlePromptFill(message);
           break;
         case 'PROMPT_PREVIEW':
           handlePromptPreview(message);
@@ -371,6 +372,32 @@ export default defineContentScript({
         context: field.context,
         autocomplete: field.autocomplete,
         required: field.required,
+      });
+    }
+
+    /** 把消息里的填充参数收敛成 fillField 需要的形状。 */
+    function fillOptionsFor(
+      message: Extract<ContentInboundMessage, { kind: 'PROMPT_FILL' }>,
+    ): FillOptions {
+      const meta = fieldMetadata.get(message.fieldId);
+      return {
+        kind: meta?.kind ?? message.fieldKind ?? null,
+        slot: message.slot ?? message.defaultSlot ?? null,
+        respectEmptyOnly: message.respectEmptyOnly === true,
+        filePayload: message.filePayload ?? null,
+      };
+    }
+
+    function sendFillResult(
+      message: Extract<ContentInboundMessage, { kind: 'PROMPT_FILL' }>,
+      outcome: FillOutcome,
+    ): void {
+      send({
+        kind: 'FILL_RESULT',
+        requestId: message.requestId,
+        fieldId: message.fieldId,
+        status: outcome.ok ? 'filled' : 'failed',
+        reason: outcome.ok ? undefined : outcome.reason,
       });
     }
 
@@ -467,7 +494,7 @@ export default defineContentScript({
       });
     }
 
-    function handlePromptFill(message: Extract<ContentInboundMessage, { kind: 'PROMPT_FILL' }>): void {
+    async function handlePromptFill(message: Extract<ContentInboundMessage, { kind: 'PROMPT_FILL' }>): Promise<void> {
       if (!domAccessAllowed && !overlayAccessAllowed) {
         send({
           kind: 'FILL_RESULT',
@@ -525,14 +552,8 @@ export default defineContentScript({
           });
           return;
         }
-        const filled = fillField(message.fieldId, value);
-        send({
-          kind: 'FILL_RESULT',
-          requestId: message.requestId,
-          fieldId: message.fieldId,
-          status: filled ? 'filled' : 'failed',
-          reason: filled ? undefined : 'fill-failed',
-        });
+        const outcome = await fillField(message.fieldId, value, fillOptionsFor(message));
+        sendFillResult(message, outcome);
         clearOverlay();
         return;
       }
@@ -563,14 +584,8 @@ export default defineContentScript({
           return;
         }
         markProgrammaticFill(message.fieldId);
-        const filled = fillField(message.fieldId, value);
-        send({
-          kind: 'FILL_RESULT',
-          requestId: message.requestId,
-          fieldId: message.fieldId,
-          status: filled ? 'filled' : 'failed',
-          reason: filled ? undefined : 'fill-failed',
-        });
+        const outcome = await fillField(message.fieldId, value, fillOptionsFor(message));
+        sendFillResult(message, outcome);
         clearOverlay();
         return;
       }
@@ -617,15 +632,10 @@ export default defineContentScript({
             return;
           }
           markProgrammaticFill(message.fieldId);
-          const filled = fillField(message.fieldId, value);
-          send({
-            kind: 'FILL_RESULT',
-            requestId: message.requestId,
-            fieldId: message.fieldId,
-            status: filled ? 'filled' : 'failed',
-            reason: filled ? undefined : 'fill-failed',
+          void fillField(message.fieldId, value, fillOptionsFor(message)).then((outcome) => {
+            sendFillResult(message, outcome);
+            clearOverlay();
           });
-          clearOverlay();
         },
         onSkip: () => {
           send({
@@ -712,15 +722,20 @@ export default defineContentScript({
             return;
           }
           markProgrammaticFill(message.fieldId);
-          const filled = fillField(message.fieldId, value);
-          send({
-            kind: 'FILL_RESULT',
-            requestId,
-            fieldId: message.fieldId,
-            status: filled ? 'filled' : 'failed',
-            reason: filled ? undefined : 'fill-failed',
+          void fillField(message.fieldId, value, {
+            kind: promptFieldSnapshot.kind,
+            slot: message.defaultSlot ?? null,
+            filePayload: null,
+          }).then((outcome) => {
+            send({
+              kind: 'FILL_RESULT',
+              requestId,
+              fieldId: message.fieldId,
+              status: outcome.ok ? 'filled' : 'failed',
+              reason: outcome.ok ? undefined : outcome.reason,
+            });
+            clearOverlay();
           });
-          clearOverlay();
         },
         onSkip: () => {
           clearOverlay();
@@ -833,6 +848,7 @@ function serializeField(field: InternalField): SerializedField {
     rect: field.rect,
     attributes: field.attributes,
     hasValue: field.hasValue,
+    readOnly: field.readOnly,
   };
 }
 

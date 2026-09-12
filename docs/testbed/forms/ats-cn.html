@@ -93,6 +93,28 @@
         font-size: 14px;
         background: #fff;
       }
+      .cn-date-panel {
+        display: flex;
+        gap: 6px;
+        margin-top: 6px;
+        padding: 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        background: #fff;
+      }
+      .cn-date-panel[hidden] {
+        display: none;
+      }
+      .cn-date-cell {
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 13px;
+        background: #f1f5f9;
+      }
+      .cn-date-cell:hover {
+        background: #e0e7ff;
+      }
       .cn-note {
         font-size: 13px;
         color: #6b7280;
@@ -183,8 +205,8 @@
         右上角自检面板会用 <code>fixtures/sample-cn-profile.json</code> 比对填入结果。
       </p>
       <p class="cn-note">
-        先在工作台导入该夹具，再点侧边栏「填写匹配字段」。<strong>当前应通过</strong>指本阶段就该填中的原生控件；
-        <strong>阶段 3 目标控件</strong>（富文本 / 自定义下拉 / Shadow DOM / 只读日期）在填充器增强后才应通过。
+        先在工作台导入该夹具，再点侧边栏「填写匹配字段」。<strong>当前应通过</strong>指本阶段就该填中的控件（含枚举下拉、单选组）；
+        <strong>阶段 3 目标控件</strong>（富文本 / 自定义下拉 / 只读日期 / Shadow DOM 内的字段）在填充器增强后才应通过。
       </p>
 
       <form id="cn-apply-form">
@@ -200,17 +222,10 @@
               <span class="el-form-item__label">性别</span>
               <div class="cn-radio-group">
                 <label
-                  ><input
-                    type="radio"
-                    name="gender"
-                    value="男"
-                    data-slot="gender"
-                    data-path="basic.gender"
-                    data-check-group="stage3"
-                  />
+                  ><input type="radio" name="gender" value="男" data-slot="gender" data-path="basic.gender" />
                   男</label
                 >
-                <label><input type="radio" name="gender" value="女" data-check-group="stage3" /> 女</label>
+                <label><input type="radio" name="gender" value="女" /> 女</label>
               </div>
             </div>
 
@@ -470,26 +485,26 @@
 
             <div class="el-form-item cn-combo" data-combo>
               <span class="el-form-item__label">期望城市（自定义下拉）</span>
-              <button type="button" class="cn-combo-trigger" data-combo-trigger aria-haspopup="listbox" aria-expanded="false">
-                请选择
-              </button>
+              <input
+                type="text"
+                readonly
+                role="combobox"
+                aria-haspopup="listbox"
+                aria-expanded="false"
+                placeholder="请选择"
+                data-slot="preferredLocation"
+                data-path="intention.expectedCity"
+                data-check-group="stage3"
+              />
               <ul class="cn-combo-list" role="listbox">
                 <li role="option">北京</li>
                 <li role="option">上海</li>
                 <li role="option">杭州</li>
                 <li role="option">深圳</li>
               </ul>
-              <input
-                type="hidden"
-                name="expectedCityCombo"
-                data-slot="preferredLocation"
-                data-path="intention.expectedCity"
-                data-check-group="stage3"
-                data-value-target="[data-combo-trigger]"
-              />
             </div>
 
-            <div class="el-form-item">
+            <div class="el-form-item cn-date" data-date-picker>
               <span class="el-form-item__label">出生日期（只读日期控件）</span>
               <input
                 type="text"
@@ -500,6 +515,12 @@
                 data-path="basic.birthDate"
                 data-check-group="stage3"
               />
+              <div class="cn-date-panel" hidden>
+                <span class="cn-date-cell" data-date="2002-05-08" title="2002-05-08">8</span>
+                <span class="cn-date-cell" data-date="2002-05-09" title="2002-05-09">9</span>
+                <span class="cn-date-cell" data-date="2002-05-10" title="2002-05-10">10</span>
+                <span class="cn-date-cell" data-date="2002-05-11" title="2002-05-11">11</span>
+              </div>
             </div>
 
             <div class="el-form-item">
@@ -536,21 +557,39 @@
         </div>
       `;
 
-      // 自定义下拉：点击展开、选中后写回触发器文案并派发事件。
+      // 自定义下拉：点击输入框展开、选中后写回值并派发事件（模仿 Ant Design Select）。
       document.querySelectorAll('[data-combo]').forEach((combo) => {
-        const trigger = combo.querySelector('[data-combo-trigger]');
+        const input = combo.querySelector('input[role="combobox"]');
         const list = combo.querySelector('.cn-combo-list');
-        trigger.addEventListener('click', () => {
+        input.addEventListener('click', () => {
           const open = combo.getAttribute('data-open') === 'true';
           combo.setAttribute('data-open', String(!open));
-          trigger.setAttribute('aria-expanded', String(!open));
+          input.setAttribute('aria-expanded', String(!open));
         });
         list.querySelectorAll('[role="option"]').forEach((option) => {
           option.addEventListener('click', () => {
-            trigger.textContent = option.textContent.trim();
+            input.value = option.textContent.trim();
             combo.setAttribute('data-open', 'false');
-            trigger.setAttribute('aria-expanded', 'false');
-            trigger.dispatchEvent(new Event('change', { bubbles: true }));
+            input.setAttribute('aria-expanded', 'false');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          });
+        });
+      });
+
+      // 只读日期控件：点击展开面板，点某一天写回 YYYY-MM-DD。
+      document.querySelectorAll('[data-date-picker]').forEach((picker) => {
+        const input = picker.querySelector('input');
+        const panel = picker.querySelector('.cn-date-panel');
+        input.addEventListener('click', () => {
+          panel.hidden = !panel.hidden;
+        });
+        panel.querySelectorAll('.cn-date-cell').forEach((cell) => {
+          cell.addEventListener('click', () => {
+            input.value = cell.getAttribute('data-date');
+            panel.hidden = true;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
           });
         });
       });

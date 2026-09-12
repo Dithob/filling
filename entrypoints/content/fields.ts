@@ -2,7 +2,7 @@ import { computeAccessibleName } from 'dom-accessibility-api';
 import type { FieldAttributes, FieldKind, FieldRect } from '../../shared/apply/types';
 import { clearRegistry, registerElement } from './registry';
 
-type SupportedElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement;
+type SupportedElement = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | HTMLElement;
 
 export interface InternalField {
   id: string;
@@ -12,6 +12,7 @@ export interface InternalField {
   context: string;
   autocomplete?: string;
   required: boolean;
+  readOnly: boolean;
   rect: FieldRect;
   attributes: FieldAttributes;
   hasValue: boolean;
@@ -19,14 +20,26 @@ export interface InternalField {
 
 const elementIds = new WeakMap<Element, string>();
 
+const FIELD_SELECTOR = [
+  'input:not([type="hidden"]):not([disabled])',
+  'textarea:not([disabled])',
+  'select:not([disabled])',
+  '[contenteditable=""]',
+  '[contenteditable="true"]',
+  '[role="textbox"][contenteditable]',
+].join(', ');
+
+/**
+ * 递归扫描（含 open shadow root）。
+ * 上游只查 document，Moka / 北森这类用 Web Component 封装的表单控件会整片漏掉。
+ * closed shadow root 无法穿透，这是已知限制。
+ */
 export function scanFields(): InternalField[] {
   clearRegistry();
 
-  const nodes: SupportedElement[] = Array.from(
-    document.querySelectorAll<SupportedElement>(
-      'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled])',
-    ),
-  );
+  const nodes: SupportedElement[] = [];
+  const seen = new Set<Element>();
+  collectFieldElements(document, nodes, seen);
 
   const candidates: InternalField[] = [];
 
@@ -46,6 +59,26 @@ export function scanFields(): InternalField[] {
   });
 
   return candidates;
+}
+
+function collectFieldElements(
+  root: Document | ShadowRoot,
+  out: SupportedElement[],
+  seen: Set<Element>,
+): void {
+  for (const element of Array.from(root.querySelectorAll<SupportedElement>(FIELD_SELECTOR))) {
+    if (seen.has(element)) {
+      continue;
+    }
+    seen.add(element);
+    out.push(element);
+  }
+  for (const element of Array.from(root.querySelectorAll('*'))) {
+    const shadow = (element as HTMLElement).shadowRoot;
+    if (shadow) {
+      collectFieldElements(shadow, out, seen);
+    }
+  }
 }
 
 export function buildFieldForElement(element: Element): InternalField | null {
@@ -68,6 +101,7 @@ export function buildFieldForElement(element: Element): InternalField | null {
   const context = buildContext(element, label);
   const attributes = extractAttributes(element);
   const hasValue = elementHasValue(element);
+  const readOnly = element instanceof HTMLInputElement ? element.readOnly : false;
 
   registerElement(id, element);
 
@@ -79,6 +113,7 @@ export function buildFieldForElement(element: Element): InternalField | null {
     context,
     rect,
     required: isRequired(element),
+    readOnly,
     autocomplete: autocomplete && autocomplete !== 'on' ? autocomplete : undefined,
     attributes,
     hasValue,
@@ -95,15 +130,30 @@ function isSupported(element: Element): element is SupportedElement {
   if (element instanceof HTMLInputElement) {
     return element.type !== 'hidden';
   }
-  return false;
+  return element instanceof HTMLElement && isContentEditableElement(element);
 }
 
+function isContentEditableElement(element: HTMLElement): boolean {
+  const attr = element.getAttribute('contenteditable');
+  if (attr !== null && attr !== 'false') {
+    return true;
+  }
+  return element.isContentEditable === true && element.getAttribute('role') === 'textbox';
+}
+
+/**
+ * 只读控件不再一律排除：国内 ATS 的日期 / 下拉常常把原生 input 设成 readonly，
+ * 由自定义面板接管。排除它们等于这些字段永远填不了，所以保留并打上 readOnly 标记，
+ * 由填充器走「模拟点击 + 面板匹配」的路径。
+ */
 function isEditable(element: SupportedElement): boolean {
   if (element instanceof HTMLInputElement) {
-    if (element.readOnly) {
+    if (element.type === 'button' || element.type === 'submit' || element.type === 'reset') {
       return false;
     }
-    if (element.type === 'button' || element.type === 'submit' || element.type === 'reset') {
+  }
+  if (element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement) {
+    if (element.hasAttribute('disabled')) {
       return false;
     }
   }
@@ -131,6 +181,7 @@ function classify(element: SupportedElement): FieldKind | null {
       case 'number':
         return 'number';
       case 'date':
+      case 'month':
         return 'date';
       case 'checkbox':
         return 'checkbox';
@@ -141,6 +192,9 @@ function classify(element: SupportedElement): FieldKind | null {
       default:
         return null;
     }
+  }
+  if (element instanceof HTMLElement && isContentEditableElement(element)) {
+    return 'contenteditable';
   }
   return null;
 }
@@ -322,12 +376,15 @@ export function elementHasValue(element: SupportedElement): boolean {
     if (element.type === 'checkbox' || element.type === 'radio') {
       return element.checked;
     }
+    if (element.type === 'file') {
+      return (element.files?.length ?? 0) > 0;
+    }
     return element.value.trim().length > 0;
   }
-  if (element instanceof HTMLSelectElement) {
+  if (element instanceof HTMLSelectElement || element instanceof HTMLTextAreaElement) {
     return element.value.trim().length > 0;
   }
-  return element.value.trim().length > 0;
+  return (element.textContent ?? '').trim().length > 0;
 }
 
 function ensureElementId(element: Element): string {

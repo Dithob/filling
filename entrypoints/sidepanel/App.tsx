@@ -20,9 +20,10 @@ import { Eraser, RefreshCcw, Sparkles, Users, Wand2 } from 'lucide-react';
 import { notifications } from '@mantine/notifications';
 import { browser } from 'wxt/browser';
 import { listProfiles } from '../../shared/storage/profiles';
-import type { ProfileRecord, ProviderConfig } from '../../shared/types';
+import type { AppSettings, ProfileRecord, ProviderConfig, StoredFileReference } from '../../shared/types';
 import { toLabeledRecord } from '../../shared/schema/cnProfile';
 import type {
+  FillFilePayload,
   FillResultMessage,
   PromptAiRequestInput,
   PromptAiRequestOptions,
@@ -34,6 +35,8 @@ import type { FieldSlot } from '../../shared/apply/slotTypes';
 import { buildManualValueTree, type ManualValueNode } from '../../shared/apply/manualValues';
 import { buildProfilePromptOptions } from '../../shared/apply/promptOptions';
 import { matchCustomAnswer } from '../../shared/apply/customFallback';
+import { getFileBuffer } from '../../shared/storage/profiles';
+import { arrayBufferToBase64 } from '../../shared/util/base64';
 import { formatSlotLabel } from '../../shared/apply/slotLabels';
 import { getAllAdapterIds } from '../../shared/apply/slots';
 import { resolveFieldSlot } from '../../shared/apply/fieldMapping';
@@ -80,6 +83,7 @@ export default function App() {
   const permissionRef = useRef(permissionGranted);
   const slotValuesRef = useRef<SlotValueMap>({});
   const customAnswersRef = useRef<Record<string, string>>({});
+  const fillModeRef = useRef<AppSettings['fillMode']>('emptyOnly');
   const scanRequestIdRef = useRef<string | null>(null);
   const descriptorsRef = useRef<FieldDescriptor[]>([]);
   const adapterIdsRef = useRef<string[]>(defaultAdapterIds);
@@ -159,6 +163,12 @@ export default function App() {
       'no-selection': t('sidepanel.reason.noSelection'),
       'empty-value': t('sidepanel.reason.emptyValue'),
       'no-permission': t('sidepanel.reason.noPermission'),
+      'unsupported-kind': t('sidepanel.reason.unsupportedKind'),
+      'no-option-match': t('sidepanel.reason.noOptionMatch'),
+      'has-value': t('sidepanel.reason.hasValue'),
+      'no-resume-file': t('sidepanel.reason.noResumeFile'),
+      'widget-timeout': t('sidepanel.reason.widgetTimeout'),
+      'exception': t('sidepanel.reason.exception'),
       'auto-no-model': t('sidepanel.reason.autoNoModel'),
       'auto-no-keys': t('sidepanel.reason.autoNoKeys'),
       'auto-no-decision': t('sidepanel.reason.autoNoDecision'),
@@ -220,6 +230,7 @@ export default function App() {
         if (cancelled) return;
         providerRef.current = settings.provider;
         setActiveAdapterIds(settings.adapters.length > 0 ? settings.adapters : defaultAdapterIds);
+        fillModeRef.current = settings.fillMode;
       } catch (error) {
         console.warn('Failed to load settings', error);
       }
@@ -432,6 +443,7 @@ export default function App() {
 
 
   const handleAutoFill = useCallback(() => {
+    // 附件不参与批量填充：需要用户显式点填，避免一上来就往站点上传简历。
     const targets = fields.filter(
       (entry) =>
         entry.field.kind !== 'file' &&
@@ -444,6 +456,7 @@ export default function App() {
       notify(t('sidepanel.feedback.noMapped'));
       return;
     }
+    const respectEmptyOnly = fillModeRef.current === 'emptyOnly';
     const pendingIds = new Set<string>();
     for (const target of targets) {
       const requestId = crypto.randomUUID();
@@ -456,6 +469,8 @@ export default function App() {
         label: target.field.label,
         mode: 'auto',
         value: target.suggestion ?? '',
+        slot: target.selectedSlot ?? target.slot ?? null,
+        respectEmptyOnly,
         fieldKind: target.field.kind,
         fieldContext: target.field.context,
         fieldAutocomplete: target.field.autocomplete ?? null,
@@ -566,32 +581,50 @@ export default function App() {
 
   const handleReview = (entry: FieldEntry) => {
     if (entry.field.kind === 'file') {
+      const source = selectedProfile?.sourceFile;
+      if (!selectedProfile || !source) {
+        notify(t('sidepanel.feedback.noResumeFile'), 'info');
+        return;
+      }
       const requestId = crypto.randomUUID();
-    sendMessage({
-      kind: 'PROMPT_FILL',
-      requestId,
-      fieldId: entry.field.id,
-      frameId: entry.field.frameId,
-      label: entry.field.label,
-      mode: 'click',
-      preview: t('sidepanel.preview.file'),
-      fieldKind: entry.field.kind,
-      fieldContext: entry.field.context,
-      fieldAutocomplete: entry.field.autocomplete ?? null,
-      fieldRequired: entry.field.required,
-      profileId: selectedProfile?.id ?? null,
-    });
-      setFields((current) =>
-        current.map((item) =>
-          item.field.id === entry.field.id
-            ? {
-                ...item,
-                status: 'pending',
-                reason: undefined,
-              }
-            : item,
-        ),
-      );
+      void loadFilePayload(selectedProfile.id, source)
+        .then((result) => {
+          if (!result.ok) {
+            notify(
+              t(result.reason === 'too-large' ? 'sidepanel.feedback.fileTooLarge' : 'sidepanel.feedback.noResumeFile'),
+              result.reason === 'too-large' ? 'error' : 'info',
+            );
+            return;
+          }
+          sendMessage({
+            kind: 'PROMPT_FILL',
+            requestId,
+            fieldId: entry.field.id,
+            frameId: entry.field.frameId,
+            label: entry.field.label,
+            mode: 'fill',
+            value: source.name,
+            preview: source.name,
+            slot: null,
+            fieldKind: 'file',
+            fieldContext: entry.field.context,
+            fieldAutocomplete: entry.field.autocomplete ?? null,
+            fieldRequired: entry.field.required,
+            filePayload: result.payload,
+            profileId: selectedProfile.id,
+          });
+          setFields((current) =>
+            current.map((item) =>
+              item.field.id === entry.field.id
+                ? { ...item, status: 'pending' as FieldStatus, reason: undefined }
+                : item,
+            ),
+          );
+        })
+        .catch((error: unknown) => {
+          console.error('Failed to read resume attachment', error);
+          notify(t('sidepanel.feedback.fileReadFailed'), 'error');
+        });
       return;
     }
 
@@ -611,6 +644,7 @@ export default function App() {
       mode: 'fill',
       value,
       preview: value,
+      slot: entry.selectedSlot ?? entry.slot ?? null,
       fieldKind: entry.field.kind,
       fieldContext: entry.field.context,
       fieldAutocomplete: entry.field.autocomplete ?? null,
@@ -1593,4 +1627,39 @@ function parseFillResultMessage(value: Record<string, unknown>): FillResultMessa
 
 function isFillResultStatus(value: unknown): value is FillResultMessage['status'] {
   return value === 'filled' || value === 'skipped' || value === 'failed';
+}
+
+/** 附件上限：base64 之后消息体约为 1.37 倍，再大就不适合走消息通道了。 */
+const MAX_RESUME_BYTES = 8 * 1024 * 1024;
+
+type FilePayloadResult =
+  | { ok: true; payload: FillFilePayload }
+  | { ok: false; reason: 'missing' | 'too-large' };
+
+/**
+ * 把当前方案的简历附件读成 base64 载荷。
+ * 侧边栏是扩展页面，能直接读 IndexedDB；content script 读不到扩展源的存储。
+ */
+async function loadFilePayload(
+  profileId: string,
+  source: StoredFileReference,
+): Promise<FilePayloadResult> {
+  if (source.size > MAX_RESUME_BYTES) {
+    return { ok: false, reason: 'too-large' };
+  }
+  const buffer = await getFileBuffer(profileId);
+  if (!buffer || buffer.byteLength === 0) {
+    return { ok: false, reason: 'missing' };
+  }
+  if (buffer.byteLength > MAX_RESUME_BYTES) {
+    return { ok: false, reason: 'too-large' };
+  }
+  return {
+    ok: true,
+    payload: {
+      name: source.name || 'resume.pdf',
+      type: source.type || 'application/pdf',
+      base64: arrayBufferToBase64(buffer),
+    },
+  };
 }

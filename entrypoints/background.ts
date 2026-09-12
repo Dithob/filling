@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import type {
   FieldAttributes,
   FieldKind,
+  FillFilePayload,
   FillResultMessage,
   PromptAiSuggestMessage,
   PromptAiSuggestResponse,
@@ -440,8 +441,7 @@ async function handleScanRequest(port: RuntimePort, payload: Record<string, unkn
   }
 }
 
-async function handlePromptFill(port: RuntimePort, payload: Record<string, unknown>): Promise<void> {
-  const requestId = typeof payload.requestId === 'string' ? payload.requestId : null;
+async function handlePromptFill(port: RuntimePort, payload: Record<string, unknown>): Promise<void> {  const requestId = typeof payload.requestId === 'string' ? payload.requestId : null;
   const fieldId = typeof payload.fieldId === 'string' ? payload.fieldId : null;
   const frameId = typeof payload.frameId === 'number' ? payload.frameId : 0;
   const value = typeof payload.value === 'string' ? payload.value : undefined;
@@ -484,6 +484,12 @@ async function handlePromptFill(port: RuntimePort, payload: Record<string, unkno
     typeof payload.defaultSlot === 'string' && options?.some((option) => option.slot === payload.defaultSlot)
       ? (payload.defaultSlot as PromptOption['slot'])
       : null;
+  const slot =
+    typeof payload.slot === 'string' && payload.slot.trim().length > 0
+      ? (payload.slot as PromptOption['slot'])
+      : null;
+  const respectEmptyOnly = payload.respectEmptyOnly === true;
+  const filePayload = parseFilePayload(payload.filePayload);
   if (!requestId || !fieldId) {
     return;
   }
@@ -544,6 +550,15 @@ async function handlePromptFill(port: RuntimePort, payload: Record<string, unkno
   }
   if (fieldRequired !== undefined) {
     message.fieldRequired = fieldRequired;
+  }
+  if (slot) {
+    message.slot = slot;
+  }
+  if (respectEmptyOnly) {
+    message.respectEmptyOnly = true;
+  }
+  if (filePayload) {
+    message.filePayload = filePayload;
   }
   const outbound: Record<string, unknown> = { kind: 'PROMPT_FILL', ...message };
   if (typeof scrollIntoView === 'boolean') {
@@ -1268,4 +1283,19 @@ function safePostMessage(port: RuntimePort, message: unknown): void {
   } catch (error) {
     console.warn('Failed to post message to port.', error);
   }
+}
+
+/** 附件填充内容：只接受形状正确的 base64 载荷，避免把任意对象转发进 content script。 */
+function parseFilePayload(raw: unknown): FillFilePayload | null {
+  if (!raw || typeof raw !== 'object') {
+    return null;
+  }
+  const record = raw as Record<string, unknown>;
+  const name = typeof record.name === 'string' ? record.name : '';
+  const type = typeof record.type === 'string' ? record.type : '';
+  const base64 = typeof record.base64 === 'string' ? record.base64 : '';
+  if (!base64) {
+    return null;
+  }
+  return { name, type, base64 };
 }

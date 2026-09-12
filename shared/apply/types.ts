@@ -6,6 +6,7 @@ export type FieldKind =
   | 'date'
   | 'select'
   | 'textarea'
+  | 'contenteditable'
   | 'checkbox'
   | 'radio'
   | 'file';
@@ -35,6 +36,8 @@ export interface ScannedField {
   context: string;
   autocomplete?: string;
   required: boolean;
+  /** 只读控件（自定义日期/下拉常把原生 input 设成 readonly），填充时走模拟点击路径。 */
+  readOnly?: boolean;
   rect: FieldRect;
   frameId: number;
   frameUrl: string;
@@ -117,6 +120,13 @@ export type PromptAiSuggestResponse =
   | { status: 'error'; error: string }
   | { status: 'aborted' };
 
+export interface FillFilePayload {
+  name: string;
+  type: string;
+  /** base64：Chrome 的消息通道是 JSON 序列化，ArrayBuffer 过不去。 */
+  base64: string;
+}
+
 export interface PromptFillRequest {
   requestId: string;
   fieldId: string;
@@ -127,11 +137,17 @@ export interface PromptFillRequest {
   preview?: string;
   options?: PromptOption[];
   defaultSlot?: PromptOptionSlot | null;
+  /** 命中的 slot，填充器据此决定日期格式、同义词展开等策略。 */
+  slot?: PromptOptionSlot | null;
   profileId?: string | null;
   fieldKind?: FieldKind;
   fieldContext?: string;
   fieldAutocomplete?: string | null;
   fieldRequired?: boolean;
+  /** 批量填充时遵守「只填空」设置：页面已有值则跳过。 */
+  respectEmptyOnly?: boolean;
+  /** 附件填充内容（仅 file 控件需要）。 */
+  filePayload?: FillFilePayload | null;
 }
 
 export type FillResultStatus = 'filled' | 'skipped' | 'failed';
