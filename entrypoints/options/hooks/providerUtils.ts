@@ -19,6 +19,7 @@ export function buildAppSettings(
   adapters: string[],
   autoFallback: AppSettings['autoFallback'],
   highlightOverlay: boolean,
+  fillMode: AppSettings['fillMode'],
 ): AppSettings {
   if (kind === 'openai') {
     return {
@@ -26,6 +27,7 @@ export function buildAppSettings(
       adapters,
       autoFallback,
       highlightOverlay,
+      fillMode,
     };
   }
   if (kind === 'gemini') {
@@ -34,6 +36,7 @@ export function buildAppSettings(
       adapters,
       autoFallback,
       highlightOverlay,
+      fillMode,
     };
   }
   return {
@@ -41,6 +44,7 @@ export function buildAppSettings(
     adapters,
     autoFallback,
     highlightOverlay,
+    fillMode,
   };
 }
 

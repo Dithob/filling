@@ -18,6 +18,7 @@ describe('buildAppSettings', () => {
       ['adapter-a'],
       'pause',
       false,
+      'overwrite',
     );
 
     expect(settings.provider).toEqual({
@@ -29,6 +30,7 @@ describe('buildAppSettings', () => {
     expect(settings.adapters).toEqual(['adapter-a']);
     expect(settings.autoFallback).toBe('pause');
     expect(settings.highlightOverlay).toBe(false);
+    expect(settings.fillMode).toBe('overwrite');
   });
 
   it('returns on-device settings when provider is local', () => {
@@ -39,6 +41,7 @@ describe('buildAppSettings', () => {
       ['adapter-a', 'adapter-b'],
       'skip',
       true,
+      'emptyOnly',
     );
 
     expect(settings.provider).toEqual({ kind: 'on-device' });

@@ -55,11 +55,15 @@ export type ProfileRecord = CnProfile & {
   };
 };
 
+/** 批量填充策略：只填空（默认）或允许覆盖页面已有值。 */
+export type FillMode = 'emptyOnly' | 'overwrite';
+
 export interface AppSettings {
   provider: ProviderConfig;
   adapters: string[];
   autoFallback: 'skip' | 'pause';
   highlightOverlay: boolean;
+  fillMode: FillMode;
 }
 
 export type ChatMessageRole = 'system' | 'user' | 'assistant';

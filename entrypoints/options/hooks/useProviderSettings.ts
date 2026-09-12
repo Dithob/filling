@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   downloadOnDeviceModel,
   ensureOnDeviceAvailability,
@@ -43,6 +43,7 @@ interface UseProviderSettingsResult {
   geminiConfig: GeminiConfigState;
   autoFallback: AppSettings['autoFallback'];
   highlightOverlay: boolean;
+  fillMode: AppSettings['fillMode'];
   availability: LanguageModelAvailability;
   onDeviceDownloadState: OnDeviceDownloadState;
   canUseOnDevice: boolean;
@@ -58,6 +59,7 @@ interface UseProviderSettingsResult {
   handleToggleAdapter: (id: string, checked: boolean) => void;
   handleAutoFallbackChange: (value: AppSettings['autoFallback']) => void;
   handleHighlightOverlayChange: (value: boolean) => void;
+  handleFillModeChange: (value: AppSettings['fillMode']) => void;
 }
 
 const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini';
@@ -91,6 +93,9 @@ export function useProviderSettings({
   const [activeAdapters, setActiveAdapters] = useState<string[]>(defaultAdapterIds);
   const [autoFallback, setAutoFallback] = useState<AppSettings['autoFallback']>('skip');
   const [highlightOverlay, setHighlightOverlay] = useState(true);
+  const [fillMode, setFillMode] = useState<AppSettings['fillMode']>('emptyOnly');
+  // persistSettings 刻意保持空依赖，所以用 ref 读取最新的填充策略，避免保存时被重置。
+  const fillModeRef = useRef<AppSettings['fillMode']>('emptyOnly');
 
   useEffect(() => {
     getSettings().then((loaded: AppSettings) => {
@@ -115,6 +120,7 @@ export function useProviderSettings({
       setActiveAdapters(loaded.adapters.length > 0 ? loaded.adapters : defaultAdapterIds);
       setAutoFallback(loaded.autoFallback ?? 'skip');
       setHighlightOverlay(loaded.highlightOverlay !== false);
+      setFillMode(loaded.fillMode ?? 'emptyOnly');
     });
 
     ensureOnDeviceAvailability().then((value: LanguageModelAvailability) => {
@@ -205,6 +211,7 @@ export function useProviderSettings({
           resolvedAdapters,
           autoFallback,
           highlightOverlay,
+          fillMode,
         );
         await saveSettings(next);
         return;
@@ -217,6 +224,7 @@ export function useProviderSettings({
           resolvedAdapters,
           autoFallback,
           highlightOverlay,
+          fillMode,
         );
         await saveSettings(next);
         return;
@@ -228,6 +236,7 @@ export function useProviderSettings({
         resolvedAdapters,
         autoFallback,
         highlightOverlay,
+        fillMode,
       );
       await saveSettings(next);
     },
@@ -235,6 +244,7 @@ export function useProviderSettings({
       activeAdapters,
       adaptersToUse,
       autoFallback,
+      fillMode,
       geminiConfig,
       highlightOverlay,
       openAiConfig,
@@ -250,7 +260,15 @@ export function useProviderSettings({
       fallbackValue: AppSettings['autoFallback'],
       highlightValue: boolean,
     ) => {
-      const next = buildAppSettings(kind, openAi, gemini, adaptersList, fallbackValue, highlightValue);
+      const next = buildAppSettings(
+        kind,
+        openAi,
+        gemini,
+        adaptersList,
+        fallbackValue,
+        highlightValue,
+        fillModeRef.current,
+      );
       void saveSettings(next);
     },
     [],
@@ -422,6 +440,7 @@ export function useProviderSettings({
           resolved,
           autoFallback,
           highlightOverlay,
+          fillModeRef.current,
         );
         void saveSettings(nextSettings);
         return resolved;
@@ -452,12 +471,45 @@ export function useProviderSettings({
         resolvedAdapters,
         value,
         highlightOverlay,
+        fillMode,
       );
       void saveSettings(nextSettings);
     },
     [
       activeAdapters,
       adaptersToUse,
+      fillMode,
+      geminiConfig,
+      highlightOverlay,
+      openAiConfig,
+      selectedProvider,
+    ],
+  );
+
+  const handleFillModeChange = useCallback(
+    (value: AppSettings['fillMode']) => {
+      setFillMode(value);
+      fillModeRef.current = value;
+      const resolvedAdapters = adaptersToUse(activeAdapters);
+      const openAiForSettings =
+        openAiConfig.apiBaseUrl.trim().length > 0
+          ? openAiConfig
+          : { ...openAiConfig, apiBaseUrl: OPENAI_DEFAULT_BASE_URL };
+      const nextSettings = buildAppSettings(
+        selectedProvider,
+        openAiForSettings,
+        geminiConfig,
+        resolvedAdapters,
+        autoFallback,
+        highlightOverlay,
+        value,
+      );
+      void saveSettings(nextSettings);
+    },
+    [
+      activeAdapters,
+      adaptersToUse,
+      autoFallback,
       geminiConfig,
       highlightOverlay,
       openAiConfig,
@@ -480,6 +532,7 @@ export function useProviderSettings({
         resolvedAdapters,
         autoFallback,
         value,
+        fillMode,
       );
       void saveSettings(nextSettings);
     },
@@ -487,6 +540,7 @@ export function useProviderSettings({
       activeAdapters,
       adaptersToUse,
       autoFallback,
+      fillMode,
       geminiConfig,
       openAiConfig,
       selectedProvider,
@@ -543,6 +597,7 @@ export function useProviderSettings({
     geminiConfig,
     autoFallback,
     highlightOverlay,
+    fillMode,
     availability,
     onDeviceDownloadState,
     canUseOnDevice,
@@ -558,5 +613,6 @@ export function useProviderSettings({
     handleToggleAdapter,
     handleAutoFallbackChange,
     handleHighlightOverlayChange,
+    handleFillModeChange,
   };
 }

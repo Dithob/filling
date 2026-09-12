@@ -29,6 +29,7 @@ import { CnProfileJsonCard } from './components/CnProfileJsonCard';
 import { ProviderCard } from './components/ProviderCard';
 import { AdaptersCard } from './components/AdaptersCard';
 import { AutofillCard } from './components/AutofillCard';
+import { FillModeCard } from './components/FillModeCard';
 import { OverlayCard } from './components/OverlayCard';
 import { MemoryCard } from './components/MemoryCard';
 import { SectionHeading } from './components/SectionHeading';
@@ -80,6 +81,7 @@ export default function App() {
     openAiConfig,
     geminiConfig,
     autoFallback,
+    fillMode,
     highlightOverlay,
     availability,
     canUseOnDevice,
@@ -94,6 +96,7 @@ export default function App() {
     handleGeminiModelChange,
     handleToggleAdapter,
     handleAutoFallbackChange,
+    handleFillModeChange,
     handleHighlightOverlayChange,
   } = useProviderSettings({ t, translate });
   const {
@@ -597,6 +600,17 @@ export default function App() {
                     skipLabel={t('options.autofill.skip')}
                     pauseLabel={t('options.autofill.pause')}
                     onChange={handleAutoFallbackChange}
+                  />
+
+                  <FillModeCard
+                    title={t('options.fillMode.heading')}
+                    description={t('options.fillMode.description')}
+                    value={fillMode}
+                    emptyOnlyLabel={t('options.fillMode.emptyOnly')}
+                    emptyOnlyHint={t('options.fillMode.emptyOnlyHint')}
+                    overwriteLabel={t('options.fillMode.overwrite')}
+                    overwriteHint={t('options.fillMode.overwriteHint')}
+                    onChange={handleFillModeChange}
                   />
 
                   <OverlayCard

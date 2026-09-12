@@ -64,6 +64,13 @@ options:
     description: Decide how Fillo handles fields that need attention during auto fill.
     skip: Skip issues and continue automatically
     pause: Pause for manual review
+  fillMode:
+    heading: Fill strategy
+    description: Applies to the batch "Fill matched fields" action. Filling a single field by hand always overwrites it.
+    emptyOnly: Only fill empty fields
+    emptyOnlyHint: Leaves values you already typed on the page untouched.
+    overwrite: Overwrite existing values
+    overwriteHint: Replaces whatever the page already contains with your profile values.
   overlay:
     heading: Highlight overlay
     description: Choose whether Fillo dims the page and highlights fields during guidance.
@@ -440,6 +447,9 @@ sidepanel:
     noClipboard: Unable to copy to clipboard
     classificationUpdated: Classification updated
     noValues: No stored values available. Update the profile first.
+    noResumeFile: This profile has no uploaded resume yet. Upload one in the options page first.
+    fileTooLarge: The resume is larger than 8 MB, too big to attach automatically.
+    fileReadFailed: Could not read the stored resume file.
   footer:
     noSelection: Select a field to review values.
     selectionHint: Choose the data to fill this field.
@@ -505,6 +515,7 @@ sidepanel:
     date: date
     select: select
     textarea: multiline
+    contenteditable: rich text
     checkbox: checkbox
     radio: radio
     file: file
@@ -524,6 +535,12 @@ sidepanel:
     noSelection: No selection made
     emptyValue: Value was empty
     noPermission: Permission required
+    unsupportedKind: This control type is not supported yet
+    noOptionMatch: No matching option on the page
+    hasValue: Already filled, skipped
+    noResumeFile: Upload a resume in the options page first
+    widgetTimeout: The custom widget did not open a picker
+    exception: The page rejected the fill
     autoNoModel: On-device AI unavailable
     autoNoKeys: No resume keys left to use
     autoNoDecision: Model could not choose a value

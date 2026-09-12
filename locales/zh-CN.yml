@@ -64,6 +64,13 @@ options:
     description: 选择自动填充遇到问题时的处理方式。
     skip: 跳过问题并继续
     pause: 暂停，等待手动处理
+  fillMode:
+    heading: 填充策略
+    description: 只作用于批量「填写匹配字段」。手动点单个字段填入时始终覆盖。
+    emptyOnly: 只填空字段
+    emptyOnlyHint: 页面上已经填过的内容不动。
+    overwrite: 覆盖已有内容
+    overwriteHint: 用简历里的值替换页面上已有的内容。
   overlay:
     heading: 高亮覆盖层
     description: 选择在引导时是否需要将页面变暗并突出显示字段。
@@ -441,6 +448,9 @@ sidepanel:
     noClipboard: 无法写入剪贴板
     classificationUpdated: 字段归类已更新
     noValues: 暂无可用字段，请先完善简历。
+    noResumeFile: 当前方案还没有简历附件，请先在工作台上传。
+    fileTooLarge: 简历超过 8MB，无法自动附加。
+    fileReadFailed: 读取已存简历失败。
   footer:
     noSelection: 请选择一个字段以查看可填数据。
     selectionHint: 选择要填入该字段的数据。
@@ -506,6 +516,7 @@ sidepanel:
     date: 日期
     select: 下拉选项
     textarea: 多行文本
+    contenteditable: 富文本
     checkbox: 复选框
     radio: 单选按钮
     file: 文件
@@ -525,6 +536,12 @@ sidepanel:
     noSelection: 未选择任何值
     emptyValue: 值为空
     noPermission: 需要先授权
+    unsupportedKind: 暂不支持这类控件
+    noOptionMatch: 页面选项里没有匹配项
+    hasValue: 已有内容，已跳过
+    noResumeFile: 请先在工作台上传简历附件
+    widgetTimeout: 自定义控件没有弹出选择面板
+    exception: 页面拒绝了这次填入
     autoNoModel: 本地 AI 不可用
     autoNoKeys: 没有可用的简历字段
     autoNoDecision: 模型未能选择值

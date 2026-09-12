@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   adapters: getAllAdapterIds(),
   autoFallback: 'skip',
   highlightOverlay: true,
+  fillMode: 'emptyOnly',
 };
 
 export async function getSettings(): Promise<AppSettings> {
@@ -23,12 +24,14 @@ export async function getSettings(): Promise<AppSettings> {
   const adapters = Array.isArray(settings.adapters) && settings.adapters.length > 0 ? settings.adapters : getAllAdapterIds();
   const autoFallback: AppSettings['autoFallback'] = settings.autoFallback === 'pause' ? 'pause' : 'skip';
   const highlightOverlay = settings.highlightOverlay === false ? false : true;
+  const fillMode = normalizeFillMode(settings.fillMode);
   if (settings.provider.kind === 'openai') {
     return {
       provider: normalizeOpenAIProvider(settings.provider),
       adapters,
       autoFallback,
       highlightOverlay,
+      fillMode,
     };
   }
   if (settings.provider.kind === 'gemini') {
@@ -37,6 +40,7 @@ export async function getSettings(): Promise<AppSettings> {
       adapters,
       autoFallback,
       highlightOverlay,
+      fillMode,
     };
   }
   return {
@@ -44,6 +48,7 @@ export async function getSettings(): Promise<AppSettings> {
     adapters,
     autoFallback,
     highlightOverlay,
+    fillMode,
   };
 }
 
@@ -55,8 +60,14 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
     adapters,
     autoFallback: settings.autoFallback === 'pause' ? 'pause' : 'skip',
     highlightOverlay,
+    fillMode: normalizeFillMode(settings.fillMode),
   };
   await browser.storage.local.set({ [SETTINGS_KEY]: normalized });
+}
+
+/** 老数据没有这个字段，一律按「只填空」处理。 */
+function normalizeFillMode(value: unknown): AppSettings['fillMode'] {
+  return value === 'overwrite' ? 'overwrite' : 'emptyOnly';
 }
 
 export function createOnDeviceProvider(): ProviderConfig {
