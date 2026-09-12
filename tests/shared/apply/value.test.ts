@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { getValueByPath, normalizeDate, normalizeEnum, coerceString } from '../../../shared/apply/value';
+import {
+  getValueByPath,
+  normalizeDate,
+  normalizeEnum,
+  coerceString,
+  expandEnumValue,
+} from '../../../shared/apply/value';
 
 describe('value helpers', () => {
   describe('getValueByPath', () => {
@@ -57,6 +63,30 @@ describe('value helpers', () => {
 
     it('returns undefined when no match', () => {
       expect(normalizeEnum('mystery', 'gender')).toBeUndefined();
+    });
+  });
+
+  describe('expandEnumValue', () => {
+    it('把中文枚举展开成中英候选', () => {
+      expect(expandEnumValue('男')).toEqual(expect.arrayContaining(['男', 'male']));
+      expect(expandEnumValue('硕士')).toEqual(
+        expect.arrayContaining(['硕士', '研究生', 'master', 'masters', 'postgraduate']),
+      );
+      expect(expandEnumValue('全职')).toEqual(expect.arrayContaining(['全职', 'full-time']));
+    });
+
+    it('英文写法也能展开回中文，保证双向匹配', () => {
+      expect(expandEnumValue('Bachelor')).toEqual(expect.arrayContaining(['本科', 'bachelor']));
+      expect(expandEnumValue('CPC member')).toEqual(expect.arrayContaining(['中共党员', '党员']));
+    });
+
+    it('未知值只返回原值', () => {
+      expect(expandEnumValue('神秘选项')).toEqual(['神秘选项']);
+    });
+
+    it('空值返回空数组', () => {
+      expect(expandEnumValue('')).toEqual([]);
+      expect(expandEnumValue(undefined)).toEqual([]);
     });
   });
 

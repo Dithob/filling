@@ -33,10 +33,11 @@ import type {
 import type { FieldSlot } from '../../shared/apply/slotTypes';
 import { buildManualValueTree, type ManualValueNode } from '../../shared/apply/manualValues';
 import { buildProfilePromptOptions } from '../../shared/apply/promptOptions';
+import { matchCustomAnswer } from '../../shared/apply/customFallback';
 import { formatSlotLabel } from '../../shared/apply/slotLabels';
 import { getAllAdapterIds } from '../../shared/apply/slots';
 import { resolveFieldSlot } from '../../shared/apply/fieldMapping';
-import { buildSlotValues, type SlotValueMap } from '../../shared/apply/profile';
+import { buildSlotValues, buildCustomAnswers, type SlotValueMap } from '../../shared/apply/profile';
 import { classifyFieldDescriptors, type FieldDescriptor } from './classifySlots';
 import { getSettings } from '../../shared/storage/settings';
 import {
@@ -78,6 +79,7 @@ export default function App() {
   const portRef = useRef<RuntimePort | null>(null);
   const permissionRef = useRef(permissionGranted);
   const slotValuesRef = useRef<SlotValueMap>({});
+  const customAnswersRef = useRef<Record<string, string>>({});
   const scanRequestIdRef = useRef<string | null>(null);
   const descriptorsRef = useRef<FieldDescriptor[]>([]);
   const adapterIdsRef = useRef<string[]>(defaultAdapterIds);
@@ -95,10 +97,15 @@ export default function App() {
   const selectedProfileIdValue = selectedProfile?.id ?? null;
 
   const slotValues = useMemo(() => buildSlotValues(selectedProfile), [selectedProfile]);
+  const customAnswers = useMemo(() => buildCustomAnswers(selectedProfile), [selectedProfile]);
 
   useEffect(() => {
     slotValuesRef.current = slotValues;
   }, [slotValues]);
+
+  useEffect(() => {
+    customAnswersRef.current = customAnswers;
+  }, [customAnswers]);
 
   useEffect(() => {
     if (fields.length === 0) {
@@ -285,7 +292,12 @@ export default function App() {
         if (scanRequestIdRef.current && parsed.requestId !== scanRequestIdRef.current) return;
 
         // Apply heuristics first, then augment with memory preferences
-        const initial = buildFieldEntries(parsed.fields, slotValuesRef.current, adapterIdsRef.current);
+        const initial = buildFieldEntries(
+          parsed.fields,
+          slotValuesRef.current,
+          adapterIdsRef.current,
+          customAnswersRef.current,
+        );
         // Lazy-load memory and apply preferred slots/values
         void (async () => {
           const { loadMemory, computeSignatureKey } = await import('../../shared/memory/store');
@@ -1083,7 +1095,12 @@ export default function App() {
       setFields(next);
       return updated;
     }
-    const [created] = buildFieldEntries([field], slotValuesRef.current, adapterIdsRef.current);
+    const [created] = buildFieldEntries(
+      [field],
+      slotValuesRef.current,
+      adapterIdsRef.current,
+      customAnswersRef.current,
+    );
     const next = [...fieldsRef.current, created];
     fieldsRef.current = next;
     setFields(next);
@@ -1092,7 +1109,11 @@ export default function App() {
 
   function renderFieldCard(entry: FieldEntry, options: { isSelected?: boolean } = {}) {
     const { selectedOption, value } = resolveEntryData(entry);
-    const baseSlotLabel = entry.slot ? formatSlotLabel(entry.slot) : t('sidepanel.field.unmapped');
+    const baseSlotLabel = entry.slot
+      ? formatSlotLabel(entry.slot)
+      : entry.slotSource === 'custom'
+        ? t('sidepanel.field.customAnswer')
+        : t('sidepanel.field.unmapped');
     const slotLabel =
       entry.slot && entry.slotSource === 'model'
         ? `${baseSlotLabel}${t('sidepanel.field.aiSuffix')}`
@@ -1107,7 +1128,9 @@ export default function App() {
       if (value) {
         return entry.slotSource === 'model'
           ? t('sidepanel.field.suggestedAI', [truncate(value)])
-          : t('sidepanel.field.suggestedProfile', [truncate(value)]);
+          : entry.slotSource === 'custom'
+            ? t('sidepanel.field.suggestedCustom', [truncate(value)])
+            : t('sidepanel.field.suggestedProfile', [truncate(value)]);
       }
       return manualOptions.length > 0 ? t('sidepanel.field.chooseValue') : t('sidepanel.field.noValues');
     })();
@@ -1439,19 +1462,29 @@ export default function App() {
   }
 }
 
-function buildFieldEntries(fields: ScannedField[], slots: SlotValueMap, adapters: string[]): FieldEntry[] {
+function buildFieldEntries(
+  fields: ScannedField[],
+  slots: SlotValueMap,
+  adapters: string[],
+  customAnswers: Record<string, string> = {},
+): FieldEntry[] {
   return fields.map((field) => {
     const slot = resolveFieldSlot(field, adapters);
-    const suggestion = slot ? slots[slot] : undefined;
+    const slotSuggestion = slot ? slots[slot] : undefined;
+    // 没匹配到 slot 时，用页面标签去 custom（「问题 -> 答案」）表兜底。
+    const customSuggestion = slotSuggestion
+      ? undefined
+      : matchCustomAnswer(field.label, field.context, customAnswers);
+    const suggestion = slotSuggestion ?? customSuggestion;
     return {
       field,
       slot,
-      selectedSlot: suggestion ? slot : null,
+      selectedSlot: slotSuggestion ? slot : null,
       suggestion,
       manualValue: suggestion ?? '',
       status: 'idle',
       reason: undefined,
-      slotSource: slot ? 'heuristic' : 'unset',
+      slotSource: slot ? 'heuristic' : customSuggestion ? 'custom' : 'unset',
       slotNote: undefined,
       autoKey: undefined,
       autoKeyLabel: undefined,

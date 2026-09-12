@@ -13,6 +13,8 @@ import type {
   ScannedField,
 } from '../shared/apply/types';
 import { buildProfilePromptOptions } from '../shared/apply/promptOptions';
+import { buildCustomAnswers } from '../shared/apply/profile';
+import { matchCustomAnswer } from '../shared/apply/customFallback';
 import { toLabeledRecord } from '../shared/schema/cnProfile';
 import { resolveFieldSlot } from '../shared/apply/fieldMapping';
 import { getAllAdapterIds } from '../shared/apply/slots';
@@ -923,6 +925,7 @@ async function maybeShowPopupPromptOverlay(
 
   let profileOptions: PromptOption[] = [];
   let profileId: string | null = null;
+  let customAnswers: Record<string, string> = {};
   if (activeProfileId) {
     try {
       const profile = await getProfile(activeProfileId);
@@ -931,6 +934,7 @@ async function maybeShowPopupPromptOverlay(
           formatSlotLabel,
           resumeLabel: i18n.t('sidepanel.manual.resumeRoot'),
         });
+        customAnswers = buildCustomAnswers(profile);
         profileId = profile.id;
       }
     } catch (error) {
@@ -942,7 +946,14 @@ async function maybeShowPopupPromptOverlay(
   const slotMatch = resolvedSlot
     ? profileOptions.find((option) => option.slot === resolvedSlot)
     : undefined;
-  const fallbackOption = slotMatch ?? profileOptions[0] ?? null;
+  // 没匹配到 slot 时用 custom（「问题 -> 答案」）兜底，并选中对应的那一条选项。
+  const customMatch = slotMatch
+    ? undefined
+    : matchCustomAnswer(fallbackLabel, field.context, customAnswers);
+  const customOption = customMatch
+    ? profileOptions.find((option) => option.value === customMatch)
+    : undefined;
+  const fallbackOption = slotMatch ?? customOption ?? profileOptions[0] ?? null;
   const defaultSlot: PromptOptionSlot | null = fallbackOption
     ? fallbackOption.slot
     : resolvedSlot ?? null;
