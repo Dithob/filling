@@ -486,6 +486,8 @@ sidepanel:
     fileSummary: 文件上传：点击后将打开选择对话框。
     suggestedProfile: 推荐（简历）：$1
     suggestedAI: 推荐（AI）：$1
+    customAnswer: 自定义答案
+    suggestedCustom: 推荐（自定义答案）：$1
     selectedValue: 已选择：$1
     chooseValue: 请在侧边栏下拉列表中选择一个值。
     selectorLabel: 存储的数据
@@ -569,6 +571,24 @@ slots:
   availabilityDate: 可到岗日期
   jobType: 工作性质
   skills: 技能
+  nation: 民族
+  politicalStatus: 政治面貌
+  idCard: 身份证号
+  hometown: 籍贯
+  wechat: 微信
+  qq: QQ
+  emergencyContact: 紧急联系人
+  emergencyPhone: 紧急联系电话
+  englishLevel: 英语水平
+  educationRanking: 专业排名
+  educationFullTime: 培养方式
+  internshipDuration: 可实习时长
+  internshipExp: 实习经历
+  projectExp: 项目经历
+  campusExp: 校园经历
+  awards: 获奖情况
+  researchDirection: 研究方向
+  hobbies: 兴趣爱好
 overlay:
   prompt:
     heading: 推荐值

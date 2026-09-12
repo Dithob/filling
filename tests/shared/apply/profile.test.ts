@@ -118,6 +118,61 @@ describe('buildSlotValues', () => {
     expect(buildCustomAnswers(makeProfile())).toEqual({ 政治面貌: '中共党员' });
   });
 
+  it('maps the CN campus-recruitment slots', () => {
+    const profile = makeProfile({
+      basic: {
+        ...makeProfile().basic,
+        nation: '汉族',
+        politicalStatus: '中共党员',
+        idCard: '110101200001011234',
+        hometown: '浙江宁波',
+        wechat: 'zhangsan_wx',
+        qq: '12345678',
+        emergencyContact: '李四',
+        emergencyPhone: '13900000000',
+        englishLevel: 'CET-6',
+      },
+      education: { ...makeProfile().education, ranking: '5/120', fullTime: '全日制' },
+      intention: { ...makeProfile().intention, internshipDuration: '6个月' },
+      texts: {
+        ...makeProfile().texts,
+        internshipExp: '某厂后端实习',
+        projectExp: '推荐系统',
+        campusExp: '学生会技术部',
+        awards: '国家奖学金',
+        researchDirection: '推荐系统',
+        hobbies: '长跑',
+      },
+    });
+    const slots = buildSlotValues(profile);
+
+    expect(slots.nation).toBe('汉族');
+    expect(slots.politicalStatus).toBe('中共党员');
+    expect(slots.idCard).toBe('110101200001011234');
+    expect(slots.hometown).toBe('浙江宁波');
+    expect(slots.wechat).toBe('zhangsan_wx');
+    expect(slots.qq).toBe('12345678');
+    expect(slots.emergencyContact).toBe('李四');
+    expect(slots.emergencyPhone).toBe('13900000000');
+    expect(slots.englishLevel).toBe('CET-6');
+    expect(slots.educationRanking).toBe('5/120');
+    expect(slots.educationFullTime).toBe('全日制');
+    expect(slots.internshipDuration).toBe('6个月');
+    expect(slots.internshipExp).toBe('某厂后端实习');
+    expect(slots.projectExp).toBe('推荐系统');
+    expect(slots.campusExp).toBe('学生会技术部');
+    expect(slots.awards).toBe('国家奖学金');
+    expect(slots.researchDirection).toBe('推荐系统');
+    expect(slots.hobbies).toBe('长跑');
+  });
+
+  it('does not emit CN slots for a profile without those fields', () => {
+    const slots = buildSlotValues(makeProfile());
+    expect(slots.nation).toBeUndefined();
+    expect(slots.idCard).toBeUndefined();
+    expect(slots.projectExp).toBeUndefined();
+  });
+
   it('returns an empty map for a blank profile', () => {
     expect(Object.keys(buildSlotValues(createEmptyProfile('p', '空方案'))).length).toBe(0);
     expect(buildSlotValues(null)).toEqual({});

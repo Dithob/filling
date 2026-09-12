@@ -485,6 +485,8 @@ sidepanel:
     fileSummary: 'File upload: you will be prompted to choose a file.'
     suggestedProfile: 'Suggested (profile): $1'
     suggestedAI: 'Suggested (AI): $1'
+    customAnswer: Custom answer
+    suggestedCustom: 'Suggested (custom answer): $1'
     selectedValue: 'Selected: $1'
     chooseValue: Select a value from the side panel dropdown.
     selectorLabel: Stored data
@@ -568,6 +570,24 @@ slots:
   availabilityDate: Availability date
   jobType: Job type
   skills: Skills
+  nation: Ethnicity
+  politicalStatus: Political status
+  idCard: ID number
+  hometown: Native place
+  wechat: WeChat
+  qq: QQ
+  emergencyContact: Emergency contact
+  emergencyPhone: Emergency phone
+  englishLevel: English level
+  educationRanking: Class ranking
+  educationFullTime: Study mode
+  internshipDuration: Internship duration
+  internshipExp: Internship experience
+  projectExp: Project experience
+  campusExp: Campus experience
+  awards: Awards
+  researchDirection: Research direction
+  hobbies: Hobbies
 overlay:
   prompt:
     heading: Suggested value

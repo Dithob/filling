@@ -63,6 +63,26 @@ const SLOT_DEFINITIONS: SlotDefinition[] = [
   { slot: 'availabilityDate', resolver: (p) => normalizeDate(p.intention?.availability) },
   { slot: 'jobType', resolver: (p) => read(p.intention?.jobType) },
   { slot: 'skills', resolver: (p) => read(p.texts?.skills) },
+
+  // 国内校招补充字段
+  { slot: 'nation', resolver: (p) => read(p.basic?.nation) },
+  { slot: 'politicalStatus', resolver: (p) => read(p.basic?.politicalStatus) },
+  { slot: 'idCard', resolver: (p) => read(p.basic?.idCard) },
+  { slot: 'hometown', resolver: (p) => read(p.basic?.hometown) },
+  { slot: 'wechat', resolver: (p) => read(p.basic?.wechat) },
+  { slot: 'qq', resolver: (p) => read(p.basic?.qq) },
+  { slot: 'emergencyContact', resolver: (p) => read(p.basic?.emergencyContact) },
+  { slot: 'emergencyPhone', resolver: (p) => read(p.basic?.emergencyPhone) },
+  { slot: 'englishLevel', resolver: (p) => read(p.basic?.englishLevel) },
+  { slot: 'educationRanking', resolver: (p) => read(p.education?.ranking) },
+  { slot: 'educationFullTime', resolver: (p) => read(p.education?.fullTime) },
+  { slot: 'internshipDuration', resolver: (p) => read(p.intention?.internshipDuration) },
+  { slot: 'internshipExp', resolver: (p) => read(p.texts?.internshipExp) },
+  { slot: 'projectExp', resolver: (p) => read(p.texts?.projectExp) },
+  { slot: 'campusExp', resolver: (p) => read(p.texts?.campusExp) },
+  { slot: 'awards', resolver: (p) => read(p.texts?.awards) },
+  { slot: 'researchDirection', resolver: (p) => read(p.texts?.researchDirection) },
+  { slot: 'hobbies', resolver: (p) => read(p.texts?.hobbies) },
 ];
 
 export function buildSlotValues(profile: ProfileRecord | CnProfile | null | undefined): SlotValueMap {

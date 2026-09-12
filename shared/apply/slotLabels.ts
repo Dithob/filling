@@ -66,6 +66,42 @@ export function formatSlotLabel(slot: FieldSlot): string {
       return i18n.t('slots.summary');
     case 'headline':
       return i18n.t('slots.headline');
+    case 'nation':
+      return i18n.t('slots.nation');
+    case 'politicalStatus':
+      return i18n.t('slots.politicalStatus');
+    case 'idCard':
+      return i18n.t('slots.idCard');
+    case 'hometown':
+      return i18n.t('slots.hometown');
+    case 'wechat':
+      return i18n.t('slots.wechat');
+    case 'qq':
+      return i18n.t('slots.qq');
+    case 'emergencyContact':
+      return i18n.t('slots.emergencyContact');
+    case 'emergencyPhone':
+      return i18n.t('slots.emergencyPhone');
+    case 'englishLevel':
+      return i18n.t('slots.englishLevel');
+    case 'educationRanking':
+      return i18n.t('slots.educationRanking');
+    case 'educationFullTime':
+      return i18n.t('slots.educationFullTime');
+    case 'internshipDuration':
+      return i18n.t('slots.internshipDuration');
+    case 'internshipExp':
+      return i18n.t('slots.internshipExp');
+    case 'projectExp':
+      return i18n.t('slots.projectExp');
+    case 'campusExp':
+      return i18n.t('slots.campusExp');
+    case 'awards':
+      return i18n.t('slots.awards');
+    case 'researchDirection':
+      return i18n.t('slots.researchDirection');
+    case 'hobbies':
+      return i18n.t('slots.hobbies');
     case 'name':
     default:
       return i18n.t('slots.name');

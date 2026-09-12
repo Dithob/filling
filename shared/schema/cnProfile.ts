@@ -72,10 +72,17 @@ export interface CnLinks {
 export interface CnTexts {
   /** 自我介绍 / 个人评价 */
   selfIntro?: string;
+  /** 项目经历，多段用空行分隔 */
   projectExp?: string;
+  /** 实习经历，多段用空行分隔 */
+  internshipExp?: string;
+  /** 校园经历 / 学生工作，多段用空行分隔 */
+  campusExp?: string;
   awards?: string;
   skills?: string;
   researchDirection?: string;
+  /** 兴趣爱好 / 特长 */
+  hobbies?: string;
 }
 
 export interface CnAttachments {
@@ -204,9 +211,12 @@ export function normalizeCnProfileData(input: unknown): CnProfileData {
     texts: {
       selfIntro: text(texts.selfIntro),
       projectExp: text(texts.projectExp),
+      internshipExp: text(texts.internshipExp),
+      campusExp: text(texts.campusExp),
       awards: text(texts.awards),
       skills: text(texts.skills),
       researchDirection: text(texts.researchDirection),
+      hobbies: text(texts.hobbies),
     },
     attachments: {
       resumeId: text(attachments.resumeId),
@@ -270,9 +280,12 @@ export function toLabeledRecord(profile: CnProfile): Record<string, string> {
     ['LinkedIn', profile.links.linkedin],
     ['自我介绍', profile.texts.selfIntro],
     ['项目经历', profile.texts.projectExp],
+    ['实习经历', profile.texts.internshipExp],
+    ['校园经历', profile.texts.campusExp],
     ['获奖情况', profile.texts.awards],
     ['技能', profile.texts.skills],
     ['研究方向', profile.texts.researchDirection],
+    ['兴趣爱好', profile.texts.hobbies],
   ];
 
   const result: Record<string, string> = {};
