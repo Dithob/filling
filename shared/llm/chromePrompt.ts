@@ -22,13 +22,20 @@ interface ChromeLanguageModelMonitor {
   ): void;
 }
 
+interface ChromeLanguageModelTextModality {
+  type: 'text';
+  languages: string[];
+}
+
 interface ChromeLanguageModelCreateOptions {
   monitor?: (monitor: ChromeLanguageModelMonitor) => void;
   signal?: AbortSignal;
+  expectedInputs?: ChromeLanguageModelTextModality[];
+  expectedOutputs?: ChromeLanguageModelTextModality[];
 }
 
 interface ChromeLanguageModel {
-  availability?: () => Promise<LanguageModelAvailability>;
+  availability?: (options?: ChromeLanguageModelCreateOptions) => Promise<LanguageModelAvailability>;
   create: (options?: ChromeLanguageModelCreateOptions) => Promise<ChromeLanguageModelSession>;
 }
 
@@ -45,6 +52,36 @@ declare global {
       languageModel?: ChromeLanguageModel;
     };
   }
+}
+
+/**
+ * Chrome's built-in model only accepts a fixed set of text languages
+ * (`de`, `en`, `es`, `fr`, `ja`) — Simplified Chinese is not among them.
+ *
+ * Declaring the language is mandatory on current Chrome: a request without
+ * `expectedOutputs[].languages` is rejected with
+ * "No output language was specified in a LanguageModel API request."
+ * `availability()` must be called with the exact same options, otherwise it can
+ * report `available` for a language pack the session then refuses to use.
+ *
+ * `en` is the correct choice here: every system prompt under `shared/llm` is
+ * written in English, and the model only copies profile values verbatim rather
+ * than translating them, so Chinese resume data still passes through unchanged.
+ * See `LANGUAGE_MODEL_LANGUAGES` before attempting to switch this to `zh`.
+ */
+const LANGUAGE_MODEL_LANGUAGE = 'en';
+
+export const LANGUAGE_MODEL_LANGUAGES = ['de', 'en', 'es', 'fr', 'ja'] as const;
+
+/** A fresh object per call: Chrome may retain the arrays it is handed. */
+function languageModelModalityOptions(): {
+  expectedInputs: ChromeLanguageModelTextModality[];
+  expectedOutputs: ChromeLanguageModelTextModality[];
+} {
+  return {
+    expectedInputs: [{ type: 'text', languages: [LANGUAGE_MODEL_LANGUAGE] }],
+    expectedOutputs: [{ type: 'text', languages: [LANGUAGE_MODEL_LANGUAGE] }],
+  };
 }
 
 interface OnDeviceSessionHandle {
@@ -144,7 +181,7 @@ async function ensureSharedSession(languageModel: ChromeLanguageModel): Promise<
   }
   if (!sharedSessionPromise) {
     sharedSessionPromise = languageModel
-      .create()
+      .create(languageModelModalityOptions())
       .catch((error) => {
         sharedSessionPromise = null;
         throw error;
@@ -181,7 +218,10 @@ async function ensureSeededSession(
   }
 
   const creation = (async () => {
-    const session = await languageModel.create(signal ? { signal } : undefined);
+    const session = await languageModel.create({
+      ...languageModelModalityOptions(),
+      ...(signal ? { signal } : {}),
+    });
     try {
       if (template.seedMessages.length > 0) {
         await session.prompt(template.seedMessages, {
@@ -291,7 +331,10 @@ async function acquireSession(
 
   // If clone is unavailable or failed, create a throwaway session to avoid mutating shared session state across concurrent calls.
   try {
-    const session = await languageModel.create(signal ? { signal } : undefined);
+    const session = await languageModel.create({
+      ...languageModelModalityOptions(),
+      ...(signal ? { signal } : {}),
+    });
     return {
       session,
       release: () => {
@@ -363,7 +406,7 @@ export async function ensureOnDeviceAvailability(): Promise<LanguageModelAvailab
     return 'unavailable';
   }
   try {
-    return await languageModel.availability();
+    return await languageModel.availability(languageModelModalityOptions());
   } catch {
     return 'unavailable';
   }
@@ -399,6 +442,7 @@ export async function downloadOnDeviceModel({
   let createdSession: ChromeLanguageModelSession | null = null;
   try {
     createdSession = await languageModel.create({
+      ...languageModelModalityOptions(),
       monitor(monitor) {
         monitor.addEventListener('downloadprogress', progressListener);
       },
