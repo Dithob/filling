@@ -61,5 +61,6 @@ Fillo 用 `FieldSlot` 做中间层，DOM 匹配与 profile 取值解耦：
 ## 已知限制
 
 - closed shadow root 无法穿透，这类控件扫不到。
+- **Chrome 内置模型只支持 `de / en / es / fr / ja` 五种文本语言，不支持中文。** `shared/llm/chromePrompt.ts` 统一以 `en` 声明 `expectedInputs` / `expectedOutputs`（当前 Chrome 强制校验，缺失即抛 `No output language was specified in a LanguageModel API request`），且 `availability()` 必须传与 `create()` 完全相同的参数。系统提示词全为英文、模型只原样搬运 profile 值，因此中文表单填充不受影响；但若将来要让模型**生成**中文文案（如开放题自述），本地模型不可靠，应改用 OpenAI / Gemini。
 - `ProfileForm`（旧 JSON Resume 表单）里 certificates / languages / interests / references / publications / volunteer / work 段落没有对应的 CnProfile 槽位，编辑后不会落盘；中文专属字段请在「扩展字段」编辑器或 profile.json 里维护。
 - 自定义下拉 / 日期选择器实现差异极大，失败时返回可读原因（编辑器会提示改用手动复制）。
