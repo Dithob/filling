@@ -18,22 +18,34 @@
  * Usage: `node scripts/run-wxt.mjs build` (any `wxt` args are forwarded).
  */
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
 const root = process.cwd();
 const wxtEntry = resolve(root, 'node_modules', 'wxt', 'bin', 'wxt.mjs');
 
-const result = spawnSync(process.execPath, [wxtEntry, ...process.argv.slice(2)], {
-  stdio: 'inherit',
-  cwd: root,
-  env: {
-    ...process.env,
-    // Belt-and-suspenders: both neutralize the delete-protection hooks.
-    NODE_OPTIONS: '',
-    CODEBUDDY_SAFE_DELETE_ENABLED: '0',
-    CODEBUDDY_SAFE_DELETE_SANDBOX: '0',
-    CODEBUDDY_BROKERED_FS_HOOK_ENABLED: '0',
+// Some environments reimplement `fs.rmdir()` so that it also removes non-empty
+// directories. WXT's `removeEmptyDirs()` depends on the standard behaviour (a
+// non-empty dir must throw `ENOTEMPTY`), so without this shim it deletes
+// `.output/chrome-mv3/assets` and the build fails on a stray `lstat`. The shim
+// is a no-op wherever `rmdir` already behaves correctly.
+const rmdirShim = resolve(dirname(fileURLToPath(import.meta.url)), 'restore-rmdir-semantics.cjs');
+
+const result = spawnSync(
+  process.execPath,
+  ['--require', rmdirShim, wxtEntry, ...process.argv.slice(2)],
+  {
+    stdio: 'inherit',
+    cwd: root,
+    env: {
+      ...process.env,
+      // Belt-and-suspenders: both neutralize the delete-protection hooks.
+      NODE_OPTIONS: '',
+      CODEBUDDY_SAFE_DELETE_ENABLED: '0',
+      CODEBUDDY_SAFE_DELETE_SANDBOX: '0',
+      CODEBUDDY_BROKERED_FS_HOOK_ENABLED: '0',
+    },
   },
-});
+);
 
 process.exit(result.status ?? 1);
