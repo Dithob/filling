@@ -28,6 +28,7 @@ import {
   ProviderInvocationError,
 } from '../shared/llm/errors';
 import { getSettings, isAiEnabled } from '../shared/storage/settings';
+import { hydrateDictionary, watchDictionaryStorage } from '../shared/dictionary/store';
 import { getProfile } from '../shared/storage/profiles';
 import {
   ACTIVE_PROFILE_STORAGE_KEY,
@@ -262,6 +263,10 @@ export default defineBackground(() => {
   });
 
   void ensureActiveProfileLoaded();
+  // 字段字典：先把 storage 里的用户覆盖热加载进来，再订阅后续变化。
+  // 匹配是同步热路径，靠 store 的模块级缓存，不能每次异步读 storage。
+  void hydrateDictionary();
+  watchDictionaryStorage();
 
   browser.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== 'local') {

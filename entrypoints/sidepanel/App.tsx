@@ -39,6 +39,7 @@ import { getFileBuffer } from '../../shared/storage/profiles';
 import { arrayBufferToBase64 } from '../../shared/util/base64';
 import { formatSlotLabel } from '../../shared/apply/slotLabels';
 import { getAllAdapterIds } from '../../shared/apply/slots';
+import { hydrateDictionary, subscribeDictionary } from '../../shared/dictionary/store';
 import { resolveFieldSlot } from '../../shared/apply/fieldMapping';
 import { buildSlotValues, buildCustomAnswers, type SlotValueMap } from '../../shared/apply/profile';
 import { classifyFieldDescriptors, type FieldDescriptor } from './classifySlots';
@@ -77,7 +78,11 @@ export default function App() {
   // default install (provider: 'none') never shows a control that cannot work.
   const [aiEnabled, setAiEnabled] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
-  const defaultAdapterIds = useMemo(() => getAllAdapterIds(), []);
+  // 字段字典的修订号：字典热更（storage 里的 dictionary:v1 变动）时 +1，
+  // 用来让依赖「可用适配器列表」的 memo 重新求值。匹配本身读的是 store 的
+  // 同步缓存，所以只有这里的 memo 需要感知变化。
+  const [dictionaryRevision, setDictionaryRevision] = useState(0);
+  const defaultAdapterIds = useMemo(() => getAllAdapterIds(), [dictionaryRevision]);
   const [activeAdapterIds, setActiveAdapterIds] = useState<string[]>(defaultAdapterIds);
   const { t } = i18n;
   const tLoose = i18n.t as unknown as (key: string, params?: unknown[]) => string;
@@ -141,6 +146,15 @@ export default function App() {
   useEffect(() => {
     permissionRef.current = permissionGranted;
   }, [permissionGranted]);
+
+  // 字典热生效：先加载 storage 里的用户覆盖，再订阅后续变化。
+  // 扫描到的字段归属哪个槽位是在这里（sidepanel）算的，所以这个上下文必须订阅。
+  useEffect(() => {
+    void hydrateDictionary();
+    return subscribeDictionary(() => {
+      setDictionaryRevision((revision) => revision + 1);
+    });
+  }, []);
 
   const sendDomAccessUpdate = useCallback((allowed: boolean) => {
     const port = portRef.current;
