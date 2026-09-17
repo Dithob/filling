@@ -54,7 +54,7 @@
 | 1.2 | 入门清单重排（档案必做 / AI 可选），AI 选项归入 Advanced 并标注不支持中文 | ✅ 完成 `7b7fb7f` |
 | 1.3 | **PDF 规则抽取（零 AI）**：`shared/pdf/ruleExtract.ts`，导入 PDF 的第三条默认路径 | ✅ 完成 `51a8b69`（附带修掉 schema 不允许 `meta.custom` 的假校验警告 `39ddf53`） |
 | 1.4 | 清理死代码与未引用文案（删除 auto 模式残留；i18n 637 → 522 键） | ✅ 完成 `e833e41` |
-| 2 | 字段字典数据化（编辑 + 导入导出 + 热生效） | 📋 设计已成文待拍板：`.plan/2026-09-17-阶段2-字段字典设计.md` |
+| 2 | 字段字典数据化（编辑 + 导入导出 + 热生效） | 🟡 **数据层 + 热生效已完成** `15cb2f3` `79d8035`（方案 A，见 `.plan/2026-09-17-阶段2-字段字典设计.md`）；编辑 UI 与导入导出入口未做 |
 | 3 | 字典扩容到 150+ 中文标签 + 真实站点语料 | ⏳ 未开始 |
 | 4 | 多方案简历库 / 附件 | ⏳ 未开始 |
 | 5 | 投递记录 | ⏳ 未开始 |
@@ -68,10 +68,22 @@
 - **`meta.custom` 是国内扩展字段的通道**，`jsonresume-v1.json` 必须放行它（且不能把 `additionalProperties` 放开成 `true`）。改 `jsonresume-v1.json` 后**必须**重编译 `jsonresume-v1.validate.cjs`，命令见 `AGENTS.md`。
 
 
+## 字段字典（阶段 2）
+
+字段知识只有一份来源：`shared/dictionary/defaults.json`（匹配模式 + 枚举同义词 + 下拉选项）。曾经它同时存在于 `adapters.ts` 的正则、`value.ts` 的枚举表、`cnProfile.ts` 的选项常量三处，改一处忘一处就静默漂移。
+
+- **模式格式**：`{ match, mode }`，`mode ∈ substring | exact | prefix | suffix | regex`。实测 305 条模式里 226 条是纯子串，只有 79 条真的含正则元字符，所以正则只当逃生口。literal 模式比较时双方小写化，等价于旧的 `/x/i`。
+- **编译期保护**：坏正则只失效这一条并记进 `issues`，不让整份字典加载失败；正则剥掉 `g`（`exec` 的 `lastIndex` 会跨次漏匹配）；literal 模式不接受空串。
+- **读取方式**：`getDictionary()` 同步返回模块级缓存，匹配热路径不碰异步 storage。任何失败（storage 里是垃圾、解析不出结构）都退回内置字典，`hydrateDictionary()` 永不 reject。
+- **热生效**：storage 键 `dictionary:v1`。background 与 sidepanel 各自 `hydrateDictionary()` + `watchDictionaryStorage()` / `subscribeDictionary`；content script 不订阅（它只执行填值）。改字典不需要重新打包扩展。
+- **导出 / 导入 / 重置**：`exportDictionary` / `importDictionary` / `resetDictionary` 已就绪；**还没有 UI 入口**（阶段 2 只做数据层，未动界面）。
+- **回归防线**：`tests/fixtures/legacy*` 冻结了改动前的旧表作为 oracle，`equivalence.test.ts` 用旧匹配逻辑与新实现在同一批约 1500 个探针上逐条比对；`defaults.sync.test.ts` 既是生成器（`WRITE_DICTIONARY=1`）也是同步守卫，手改 JSON 会被打回。
+
+
 ## 关键实现说明
 
 - **匹配策略**：`matchSlotWithAdapters` 按「最长命中优先」决策（同长时保留声明顺序）。上游的「首个命中」会把「紧急联系电话」判给 `phone`、「专业排名」判给 `educationField`。
-- **枚举归一化**：`expandEnumValue` 把值展开成中英同义候选，填充器用候选集匹配页面 option 文案（中英双向）；`normalizeEnum` 保留为单向旧接口。
+- **枚举归一化**：`expandEnumValue` 把值展开成中英同义候选，填充器用候选集匹配页面 option 文案（中英双向）；`normalizeEnum` 保留为单向旧接口。两张表都读字典的 `enums` / `synonyms`。
 - **custom 兜底**：字段没命中任何 slot 时，用页面标签/上下文去 `profile.custom` 查答案（`shared/apply/customFallback.ts`），侧边栏标记为「自定义答案」。
 - **附件填充**：侧边栏读 IndexedDB → base64 → `PROMPT_FILL` 下发 → content script 用 `DataTransfer` 写 `input.files`。上限 8MB。
 - **只填空**：`AppSettings.fillMode`（默认 `emptyOnly`）只作用于批量「填写匹配字段」；手动点单个字段填入始终覆盖。

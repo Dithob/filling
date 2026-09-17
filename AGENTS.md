@@ -31,6 +31,18 @@
 - `shared/schema/jsonresume-v1.llm.json` is the trimmed variant handed to models as a response schema; keep its shape consistent with `jsonresume-v1.json` (it drops `format` keywords only).
 - Chinese campus fields (民族 / 政治面貌 / 身份证号 …) travel in `meta.custom` as `Record<string, string>`; `shared/schema/cnProfileBridge.ts` reserves those keys and must stay in sync with the schema's `meta` definition.
 
+## Field Dictionary
+- `shared/dictionary/defaults.json` is the **single source** for field-matching knowledge: label patterns, enum synonyms, dropdown options. Do not reintroduce hardcoded copies in `shared/apply/adapters.ts`, `shared/apply/value.ts`, or `shared/schema/cnProfile.ts`.
+- Pattern format is `{ match, mode }` with `mode ∈ substring | exact | prefix | suffix | regex`. Prefer a declarative mode; a pattern only needs `regex` if it contains metacharacters (`\s*`, `(a|b)?`, anchors mid-string…).
+- Read it through `getDictionary()` (`shared/dictionary/store.ts`) — it returns a synchronous module-level cache, never throws, and falls back to the built-in dictionary on any failure.
+- `tests/fixtures/legacyAdapters.ts` / `legacyValueTables.ts` are frozen pre-migration oracles. `tests/shared/dictionary/defaults.sync.test.ts` doubles as generator and guard:
+
+  ```bash
+  WRITE_DICTIONARY=1 node node_modules/vitest/vitest.mjs run tests/shared/dictionary/defaults.sync.test.ts
+  ```
+
+  Running it without `WRITE_DICTIONARY` only verifies the on-disk JSON still matches the legacy tables — hand-editing the JSON will fail the suite.
+
 ## Coding Style & Naming Conventions
 - Write TypeScript-first React components; prefer function components with hooks.
 - Match the existing 2-space indentation, trailing commas, and double-quote JSX props produced by default Prettier settings.
