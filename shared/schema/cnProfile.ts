@@ -225,18 +225,16 @@ export function normalizeCnProfileData(input: unknown): CnProfileData {
   };
 }
 
-/** 下拉可选值，供 options 表单与归一化共用 */
-export const DEGREE_OPTIONS = ['大专', '本科', '硕士', '博士'] as const;
-export const GENDER_OPTIONS = ['男', '女'] as const;
-export const POLITICAL_STATUS_OPTIONS = [
-  '中共党员',
-  '中共预备党员',
-  '共青团员',
-  '群众',
-  '民主党派',
-] as const;
-export const JOB_TYPE_OPTIONS = ['全职', '实习', '兼职'] as const;
-export const FULL_TIME_OPTIONS = ['全日制', '非全日制'] as const;
+/*
+ * 下拉可选值（学历 / 性别 / 政治面貌 / 工作性质 / 全日制）不放这里了。
+ *
+ * 它们曾经在 4 个地方各留一份副本（匹配器的正则、context hint、枚举归一化表、
+ * 本文件的常量），改一处忘一处就会静默漂移。现在**唯一来源**是
+ * `shared/dictionary/defaults.json` 的 `options` 段，运行时通过
+ * `getDictionary().options` 读取（见 shared/dictionary/store.ts）。
+ *
+ * 本文件只负责 profile 的**数据形状与转换**，不承担枚举定义。
+ */
 
 /**
  * 把 profile 摊平成「中文标签 -> 值」，供侧边栏树、AI prompt 与手动复制使用。

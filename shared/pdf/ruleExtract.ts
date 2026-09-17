@@ -1,5 +1,5 @@
 import type { ResumeExtractionResult } from '../types';
-import { POLITICAL_STATUS_OPTIONS } from '../schema/cnProfile';
+import { getDictionary } from '../dictionary/store';
 
 /**
  * 零 AI 的简历文本抽取。
@@ -99,8 +99,19 @@ const NATION_NAMES = [
 ];
 /** 长的排前面，避免 `土族` 抢先匹配掉 `土家族`。 */
 const NATION_NAME_RE = new RegExp([...NATION_NAMES].sort((a, b) => b.length - a.length).join('|'));
+/**
+ * 政治面貌的兜底扫描：字典里的规范值 + 几个常见但没进规范值的写法。
+ *
+ * 规范值取自字典（唯一来源），所以这里只在**正则构造时**读一次快照；
+ * 兜底集合是抽取规则的一部分（「预备党员」这类写法要认得出来），留在代码里。
+ */
 const POLITICAL_STATUS_FALLBACK_RE = new RegExp(
-  [...POLITICAL_STATUS_OPTIONS, '中共预备党员', '预备党员', '无党派人士']
+  [
+    ...(getDictionary().options.politicalStatus ?? []),
+    '中共预备党员',
+    '预备党员',
+    '无党派人士',
+  ]
     .sort((a, b) => b.length - a.length)
     .join('|'),
 );

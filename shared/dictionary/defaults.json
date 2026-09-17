@@ -1,0 +1,1785 @@
+{
+  "version": 1,
+  "adapters": [
+    {
+      "id": "en_default",
+      "enabled": true,
+      "patterns": {
+        "name": [
+          {
+            "match": "name",
+            "mode": "exact"
+          },
+          {
+            "match": "^full\\s*name$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^your\\s*name$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "firstName": [
+          {
+            "match": "^first\\s*name$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^given[-\\s]?name$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "lastName": [
+          {
+            "match": "^last\\s*name$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^family[-\\s]?name$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "surname",
+            "mode": "exact"
+          }
+        ],
+        "email": [
+          {
+            "match": "^e[-\\s]?mail$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^email\\s*address$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "phone": [
+          {
+            "match": "phone",
+            "mode": "prefix"
+          },
+          {
+            "match": "mobile",
+            "mode": "exact"
+          },
+          {
+            "match": "telephone",
+            "mode": "exact"
+          }
+        ],
+        "city": [
+          {
+            "match": "city",
+            "mode": "exact"
+          },
+          {
+            "match": "town",
+            "mode": "exact"
+          }
+        ],
+        "country": [
+          {
+            "match": "country",
+            "mode": "exact"
+          }
+        ],
+        "state": [
+          {
+            "match": "state",
+            "mode": "exact"
+          },
+          {
+            "match": "province",
+            "mode": "exact"
+          },
+          {
+            "match": "region",
+            "mode": "exact"
+          }
+        ],
+        "postalCode": [
+          {
+            "match": "^postal\\s*code$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "zip",
+            "mode": "exact"
+          },
+          {
+            "match": "^zip\\s*code$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "address": [
+          {
+            "match": "address",
+            "mode": "exact"
+          },
+          {
+            "match": "street",
+            "mode": "exact"
+          },
+          {
+            "match": "^street\\s*address$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "birthDate": [
+          {
+            "match": "^date\\s*of\\s*birth$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^birth\\s*date$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "dob",
+            "mode": "exact"
+          },
+          {
+            "match": "birthday",
+            "mode": "exact"
+          }
+        ],
+        "gender": [
+          {
+            "match": "gender",
+            "mode": "exact"
+          },
+          {
+            "match": "sex",
+            "mode": "exact"
+          }
+        ],
+        "website": [
+          {
+            "match": "website",
+            "mode": "exact"
+          },
+          {
+            "match": "portfolio",
+            "mode": "exact"
+          },
+          {
+            "match": "^personal\\s*site$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "linkedin": [
+          {
+            "match": "linkedin",
+            "mode": "prefix"
+          }
+        ],
+        "github": [
+          {
+            "match": "github",
+            "mode": "prefix"
+          }
+        ],
+        "summary": [
+          {
+            "match": "summary",
+            "mode": "exact"
+          },
+          {
+            "match": "^about\\s+you$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "bio",
+            "mode": "exact"
+          }
+        ],
+        "headline": [
+          {
+            "match": "headline",
+            "mode": "exact"
+          },
+          {
+            "match": "^current\\s*role$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "title",
+            "mode": "exact"
+          },
+          {
+            "match": "^position\\s+applied",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^desired\\s+position",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "currentCompany": [
+          {
+            "match": "^current\\s*company$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "employer",
+            "mode": "exact"
+          },
+          {
+            "match": "organization",
+            "mode": "exact"
+          },
+          {
+            "match": "company",
+            "mode": "exact"
+          }
+        ],
+        "currentTitle": [
+          {
+            "match": "^current\\s*(title|position)$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^job\\s*title$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "role",
+            "mode": "exact"
+          }
+        ],
+        "currentLocation": [
+          {
+            "match": "^current\\s*location$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^work\\s*location$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^office\\s*location$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "currentStartDate": [
+          {
+            "match": "^current\\s*(employment|job)?\\s*start",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^employment\\s*start$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^work\\s*start$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "currentEndDate": [
+          {
+            "match": "^current\\s*(employment|job)?\\s*end",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^employment\\s*end$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^work\\s*end$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^last\\s*day$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "educationSchool": [
+          {
+            "match": "school",
+            "mode": "exact"
+          },
+          {
+            "match": "university",
+            "mode": "exact"
+          },
+          {
+            "match": "college",
+            "mode": "exact"
+          },
+          {
+            "match": "institution",
+            "mode": "exact"
+          }
+        ],
+        "educationDegree": [
+          {
+            "match": "degree",
+            "mode": "exact"
+          },
+          {
+            "match": "^education\\s*level$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "qualification",
+            "mode": "exact"
+          }
+        ],
+        "educationField": [
+          {
+            "match": "major",
+            "mode": "exact"
+          },
+          {
+            "match": "^field\\s*of\\s*study$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "discipline",
+            "mode": "exact"
+          }
+        ],
+        "educationStartDate": [
+          {
+            "match": "^enrollment\\s*date$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^education\\s*start$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "educationEndDate": [
+          {
+            "match": "^graduation\\s*date$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^education\\s*end$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^completion\\s*date$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "educationGpa": [
+          {
+            "match": "gpa",
+            "mode": "exact"
+          },
+          {
+            "match": "grade",
+            "mode": "exact"
+          },
+          {
+            "match": "^grade\\s*point$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "expectedSalary": [
+          {
+            "match": "^expected\\s*salary$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^desired\\s*salary$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^salary\\s*expectation$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "preferredLocation": [
+          {
+            "match": "^preferred\\s*location$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^desired\\s*location$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^target\\s*location$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "availabilityDate": [
+          {
+            "match": "availability",
+            "mode": "exact"
+          },
+          {
+            "match": "^available\\s*from$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^available\\s*date$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "jobType": [
+          {
+            "match": "^job\\s*type$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^employment\\s*type$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "skills": [
+          {
+            "match": "skills",
+            "mode": "exact"
+          },
+          {
+            "match": "^skill\\s*set$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "nation": [
+          {
+            "match": "ethnicity",
+            "mode": "exact"
+          },
+          {
+            "match": "^ethnic\\s*group$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^nationality\\s*\\(ethnic\\)",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "politicalStatus": [
+          {
+            "match": "^political\\s*status$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^party\\s*affiliation$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "idCard": [
+          {
+            "match": "^id\\s*(card|number)$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^national\\s*id",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^identity\\s*number$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "hometown": [
+          {
+            "match": "^native\\s*place$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "hometown",
+            "mode": "exact"
+          },
+          {
+            "match": "^place\\s*of\\s*origin$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "wechat": [
+          {
+            "match": "wechat",
+            "mode": "exact"
+          },
+          {
+            "match": "weixin",
+            "mode": "exact"
+          }
+        ],
+        "qq": [
+          {
+            "match": "qq",
+            "mode": "exact"
+          },
+          {
+            "match": "^qq\\s*number$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "emergencyContact": [
+          {
+            "match": "^emergency\\s*contact(\\s*name)?$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "emergencyPhone": [
+          {
+            "match": "^emergency\\s*(contact\\s*)?(phone|tel|mobile)",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "englishLevel": [
+          {
+            "match": "^english\\s*(level|proficiency)$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^cet[-\\s]?\\d?$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "educationRanking": [
+          {
+            "match": "^(class|major|academic)\\s*ranking$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "rank",
+            "mode": "exact"
+          }
+        ],
+        "educationFullTime": [
+          {
+            "match": "^study\\s*mode$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^full[-\\s]?time\\s*study$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "internshipDuration": [
+          {
+            "match": "^internship\\s*(duration|period|length)$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^available\\s*internship",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "internshipExp": [
+          {
+            "match": "^internship\\s*(experience|history)$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "projectExp": [
+          {
+            "match": "^project\\s*(experience|history)$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "projects",
+            "mode": "exact"
+          }
+        ],
+        "campusExp": [
+          {
+            "match": "^campus\\s*(experience|activities)$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^student\\s*(activities|leadership)$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "awards": [
+          {
+            "match": "^awards?$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^honors?$",
+            "mode": "regex",
+            "flags": "i"
+          },
+          {
+            "match": "^honors?\\s*(and|&)\\s*awards?$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "researchDirection": [
+          {
+            "match": "^research\\s*(direction|area|interest)s?$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ],
+        "hobbies": [
+          {
+            "match": "hobbies",
+            "mode": "exact"
+          },
+          {
+            "match": "interests",
+            "mode": "exact"
+          },
+          {
+            "match": "^hobbies\\s*(and|&)\\s*interests$",
+            "mode": "regex",
+            "flags": "i"
+          }
+        ]
+      }
+    },
+    {
+      "id": "zh_cn",
+      "enabled": true,
+      "patterns": {
+        "name": [
+          {
+            "match": "姓名",
+            "mode": "substring"
+          },
+          {
+            "match": "真实姓名",
+            "mode": "substring"
+          },
+          {
+            "match": "名字",
+            "mode": "exact"
+          }
+        ],
+        "lastName": [
+          {
+            "match": "姓",
+            "mode": "suffix"
+          },
+          {
+            "match": "姓氏",
+            "mode": "substring"
+          }
+        ],
+        "email": [
+          {
+            "match": "邮箱",
+            "mode": "substring"
+          },
+          {
+            "match": "电子邮件",
+            "mode": "substring"
+          },
+          {
+            "match": "电子邮箱",
+            "mode": "substring"
+          }
+        ],
+        "phone": [
+          {
+            "match": "电话",
+            "mode": "prefix"
+          },
+          {
+            "match": "手机",
+            "mode": "substring"
+          },
+          {
+            "match": "联系电话",
+            "mode": "substring"
+          },
+          {
+            "match": "联系方式",
+            "mode": "exact"
+          }
+        ],
+        "city": [
+          {
+            "match": "城市",
+            "mode": "substring"
+          },
+          {
+            "match": "市",
+            "mode": "exact"
+          },
+          {
+            "match": "市",
+            "mode": "suffix"
+          },
+          {
+            "match": "所在地区",
+            "mode": "substring"
+          }
+        ],
+        "country": [
+          {
+            "match": "国家",
+            "mode": "substring"
+          },
+          {
+            "match": "国籍",
+            "mode": "substring"
+          }
+        ],
+        "state": [
+          {
+            "match": "省份",
+            "mode": "substring"
+          },
+          {
+            "match": "省\\/?直辖市",
+            "mode": "regex"
+          },
+          {
+            "match": "自治区",
+            "mode": "substring"
+          },
+          {
+            "match": "省",
+            "mode": "exact"
+          }
+        ],
+        "postalCode": [
+          {
+            "match": "邮编",
+            "mode": "substring"
+          },
+          {
+            "match": "邮政编码",
+            "mode": "substring"
+          }
+        ],
+        "address": [
+          {
+            "match": "地址",
+            "mode": "substring"
+          },
+          {
+            "match": "通讯地址",
+            "mode": "substring"
+          },
+          {
+            "match": "联系地址",
+            "mode": "substring"
+          },
+          {
+            "match": "详细地址",
+            "mode": "substring"
+          }
+        ],
+        "birthDate": [
+          {
+            "match": "出生日期",
+            "mode": "substring"
+          },
+          {
+            "match": "出生年月",
+            "mode": "substring"
+          },
+          {
+            "match": "生日",
+            "mode": "substring"
+          },
+          {
+            "match": "出生时间",
+            "mode": "substring"
+          }
+        ],
+        "gender": [
+          {
+            "match": "性别",
+            "mode": "substring"
+          }
+        ],
+        "website": [
+          {
+            "match": "网站",
+            "mode": "substring"
+          },
+          {
+            "match": "主页",
+            "mode": "substring"
+          },
+          {
+            "match": "网址",
+            "mode": "substring"
+          },
+          {
+            "match": "个人网站",
+            "mode": "substring"
+          }
+        ],
+        "linkedin": [
+          {
+            "match": "领英",
+            "mode": "substring"
+          }
+        ],
+        "github": [
+          {
+            "match": "github",
+            "mode": "substring"
+          }
+        ],
+        "summary": [
+          {
+            "match": "自我介绍",
+            "mode": "substring"
+          },
+          {
+            "match": "个人简介",
+            "mode": "substring"
+          },
+          {
+            "match": "自我评价",
+            "mode": "substring"
+          },
+          {
+            "match": "个人评价",
+            "mode": "substring"
+          }
+        ],
+        "headline": [
+          {
+            "match": "应聘岗位",
+            "mode": "substring"
+          },
+          {
+            "match": "意向岗位",
+            "mode": "substring"
+          },
+          {
+            "match": "期望岗位",
+            "mode": "substring"
+          },
+          {
+            "match": "目标岗位",
+            "mode": "substring"
+          },
+          {
+            "match": "当前职位",
+            "mode": "substring"
+          },
+          {
+            "match": "现任职位",
+            "mode": "substring"
+          },
+          {
+            "match": "职称",
+            "mode": "exact"
+          },
+          {
+            "match": "头衔",
+            "mode": "exact"
+          }
+        ],
+        "currentCompany": [
+          {
+            "match": "现单位",
+            "mode": "substring"
+          },
+          {
+            "match": "现公司",
+            "mode": "substring"
+          },
+          {
+            "match": "所在公司",
+            "mode": "substring"
+          },
+          {
+            "match": "工作单位",
+            "mode": "substring"
+          }
+        ],
+        "currentTitle": [
+          {
+            "match": "职位",
+            "mode": "exact"
+          },
+          {
+            "match": "岗位",
+            "mode": "exact"
+          },
+          {
+            "match": "职务",
+            "mode": "exact"
+          },
+          {
+            "match": "职称",
+            "mode": "exact"
+          },
+          {
+            "match": "工作职位",
+            "mode": "substring"
+          },
+          {
+            "match": "工作职务",
+            "mode": "substring"
+          }
+        ],
+        "currentLocation": [
+          {
+            "match": "工作地点",
+            "mode": "substring"
+          },
+          {
+            "match": "现居地",
+            "mode": "substring"
+          },
+          {
+            "match": "所在地点",
+            "mode": "substring"
+          },
+          {
+            "match": "办公地点",
+            "mode": "substring"
+          }
+        ],
+        "currentStartDate": [
+          {
+            "match": "入职日期",
+            "mode": "substring"
+          },
+          {
+            "match": "入职时间",
+            "mode": "substring"
+          },
+          {
+            "match": "工作开始时间",
+            "mode": "substring"
+          }
+        ],
+        "currentEndDate": [
+          {
+            "match": "离职日期",
+            "mode": "substring"
+          },
+          {
+            "match": "离职时间",
+            "mode": "substring"
+          },
+          {
+            "match": "工作结束时间",
+            "mode": "substring"
+          }
+        ],
+        "educationSchool": [
+          {
+            "match": "学校",
+            "mode": "substring"
+          },
+          {
+            "match": "毕业院校",
+            "mode": "substring"
+          },
+          {
+            "match": "院校",
+            "mode": "substring"
+          }
+        ],
+        "educationDegree": [
+          {
+            "match": "学历",
+            "mode": "substring"
+          },
+          {
+            "match": "学位",
+            "mode": "substring"
+          },
+          {
+            "match": "学历层次",
+            "mode": "substring"
+          }
+        ],
+        "educationField": [
+          {
+            "match": "专业",
+            "mode": "substring"
+          },
+          {
+            "match": "学习方向",
+            "mode": "substring"
+          }
+        ],
+        "educationStartDate": [
+          {
+            "match": "入学日期",
+            "mode": "substring"
+          },
+          {
+            "match": "入学时间",
+            "mode": "substring"
+          },
+          {
+            "match": "学习开始时间",
+            "mode": "substring"
+          }
+        ],
+        "educationEndDate": [
+          {
+            "match": "毕业日期",
+            "mode": "substring"
+          },
+          {
+            "match": "毕业时间",
+            "mode": "substring"
+          },
+          {
+            "match": "毕业年月",
+            "mode": "substring"
+          }
+        ],
+        "educationGpa": [
+          {
+            "match": "绩点",
+            "mode": "substring"
+          },
+          {
+            "match": "gpa",
+            "mode": "substring"
+          },
+          {
+            "match": "平均分",
+            "mode": "substring"
+          },
+          {
+            "match": "平均成绩",
+            "mode": "substring"
+          }
+        ],
+        "expectedSalary": [
+          {
+            "match": "期望薪资",
+            "mode": "substring"
+          },
+          {
+            "match": "薪资要求",
+            "mode": "substring"
+          },
+          {
+            "match": "期望工资",
+            "mode": "substring"
+          },
+          {
+            "match": "期望薪水",
+            "mode": "substring"
+          },
+          {
+            "match": "期望月薪",
+            "mode": "substring"
+          }
+        ],
+        "preferredLocation": [
+          {
+            "match": "期望地点",
+            "mode": "substring"
+          },
+          {
+            "match": "意向城市",
+            "mode": "substring"
+          },
+          {
+            "match": "期望工作地点",
+            "mode": "substring"
+          },
+          {
+            "match": "目标城市",
+            "mode": "substring"
+          },
+          {
+            "match": "期望城市",
+            "mode": "substring"
+          },
+          {
+            "match": "意向地点",
+            "mode": "substring"
+          }
+        ],
+        "availabilityDate": [
+          {
+            "match": "到岗时间",
+            "mode": "substring"
+          },
+          {
+            "match": "可入职时间",
+            "mode": "substring"
+          },
+          {
+            "match": "入职时间",
+            "mode": "substring"
+          },
+          {
+            "match": "可用时间",
+            "mode": "substring"
+          }
+        ],
+        "jobType": [
+          {
+            "match": "工作性质",
+            "mode": "substring"
+          },
+          {
+            "match": "工作类型",
+            "mode": "substring"
+          },
+          {
+            "match": "职位类型",
+            "mode": "substring"
+          },
+          {
+            "match": "工作方式",
+            "mode": "substring"
+          }
+        ],
+        "skills": [
+          {
+            "match": "技能",
+            "mode": "substring"
+          },
+          {
+            "match": "技能特长",
+            "mode": "substring"
+          },
+          {
+            "match": "技术栈",
+            "mode": "substring"
+          },
+          {
+            "match": "擅长领域",
+            "mode": "substring"
+          }
+        ],
+        "nation": [
+          {
+            "match": "民族",
+            "mode": "substring"
+          }
+        ],
+        "politicalStatus": [
+          {
+            "match": "政治面貌",
+            "mode": "substring"
+          },
+          {
+            "match": "政治面目",
+            "mode": "substring"
+          },
+          {
+            "match": "政治身份",
+            "mode": "substring"
+          }
+        ],
+        "idCard": [
+          {
+            "match": "身份证号",
+            "mode": "substring"
+          },
+          {
+            "match": "身份证号码",
+            "mode": "substring"
+          },
+          {
+            "match": "证件号码",
+            "mode": "substring"
+          },
+          {
+            "match": "证件号",
+            "mode": "substring"
+          },
+          {
+            "match": "身份证",
+            "mode": "exact"
+          }
+        ],
+        "hometown": [
+          {
+            "match": "籍贯",
+            "mode": "substring"
+          },
+          {
+            "match": "祖籍",
+            "mode": "substring"
+          },
+          {
+            "match": "生源地",
+            "mode": "substring"
+          }
+        ],
+        "wechat": [
+          {
+            "match": "微信",
+            "mode": "substring"
+          },
+          {
+            "match": "微信号",
+            "mode": "substring"
+          }
+        ],
+        "qq": [
+          {
+            "match": "qq",
+            "mode": "substring"
+          }
+        ],
+        "emergencyContact": [
+          {
+            "match": "紧急联系人姓名",
+            "mode": "substring"
+          },
+          {
+            "match": "紧急联系人",
+            "mode": "substring"
+          },
+          {
+            "match": "紧急联络人",
+            "mode": "substring"
+          }
+        ],
+        "emergencyPhone": [
+          {
+            "match": "紧急联系电话",
+            "mode": "substring"
+          },
+          {
+            "match": "紧急联系人电话",
+            "mode": "substring"
+          },
+          {
+            "match": "紧急联系人手机",
+            "mode": "substring"
+          },
+          {
+            "match": "紧急联络电话",
+            "mode": "substring"
+          }
+        ],
+        "englishLevel": [
+          {
+            "match": "英语水平",
+            "mode": "substring"
+          },
+          {
+            "match": "英语等级",
+            "mode": "substring"
+          },
+          {
+            "match": "外语水平",
+            "mode": "substring"
+          },
+          {
+            "match": "英语能力",
+            "mode": "substring"
+          },
+          {
+            "match": "cet",
+            "mode": "substring"
+          }
+        ],
+        "educationRanking": [
+          {
+            "match": "专业排名",
+            "mode": "substring"
+          },
+          {
+            "match": "年级排名",
+            "mode": "substring"
+          },
+          {
+            "match": "班级排名",
+            "mode": "substring"
+          },
+          {
+            "match": "排名",
+            "mode": "exact"
+          }
+        ],
+        "educationFullTime": [
+          {
+            "match": "培养方式",
+            "mode": "substring"
+          },
+          {
+            "match": "学习形式",
+            "mode": "substring"
+          },
+          {
+            "match": "培养类型",
+            "mode": "substring"
+          }
+        ],
+        "internshipDuration": [
+          {
+            "match": "可实习时长",
+            "mode": "substring"
+          },
+          {
+            "match": "实习时长",
+            "mode": "substring"
+          },
+          {
+            "match": "实习周期",
+            "mode": "substring"
+          },
+          {
+            "match": "可实习时间",
+            "mode": "substring"
+          },
+          {
+            "match": "实习时间",
+            "mode": "substring"
+          }
+        ],
+        "internshipExp": [
+          {
+            "match": "实习经历",
+            "mode": "substring"
+          },
+          {
+            "match": "实习经验",
+            "mode": "substring"
+          },
+          {
+            "match": "实习情况",
+            "mode": "substring"
+          }
+        ],
+        "projectExp": [
+          {
+            "match": "项目经历",
+            "mode": "substring"
+          },
+          {
+            "match": "项目经验",
+            "mode": "substring"
+          },
+          {
+            "match": "科研项目",
+            "mode": "substring"
+          },
+          {
+            "match": "项目介绍",
+            "mode": "substring"
+          },
+          {
+            "match": "项目描述",
+            "mode": "substring"
+          }
+        ],
+        "campusExp": [
+          {
+            "match": "校园经历",
+            "mode": "substring"
+          },
+          {
+            "match": "校园活动",
+            "mode": "substring"
+          },
+          {
+            "match": "学生工作",
+            "mode": "substring"
+          },
+          {
+            "match": "社团经历",
+            "mode": "substring"
+          },
+          {
+            "match": "在校经历",
+            "mode": "substring"
+          }
+        ],
+        "awards": [
+          {
+            "match": "获奖情况",
+            "mode": "substring"
+          },
+          {
+            "match": "奖励情况",
+            "mode": "substring"
+          },
+          {
+            "match": "荣誉奖项",
+            "mode": "substring"
+          },
+          {
+            "match": "所获奖励",
+            "mode": "substring"
+          },
+          {
+            "match": "获奖经历",
+            "mode": "substring"
+          }
+        ],
+        "researchDirection": [
+          {
+            "match": "研究方向",
+            "mode": "substring"
+          },
+          {
+            "match": "研究领域",
+            "mode": "substring"
+          }
+        ],
+        "hobbies": [
+          {
+            "match": "兴趣爱好",
+            "mode": "substring"
+          },
+          {
+            "match": "爱好特长",
+            "mode": "substring"
+          },
+          {
+            "match": "个人爱好",
+            "mode": "substring"
+          },
+          {
+            "match": "爱好",
+            "mode": "exact"
+          },
+          {
+            "match": "特长",
+            "mode": "exact"
+          }
+        ]
+      }
+    }
+  ],
+  "enums": {
+    "gender": {
+      "male": [
+        "male",
+        "m",
+        "man",
+        "男"
+      ],
+      "female": [
+        "female",
+        "f",
+        "woman",
+        "女"
+      ],
+      "other": [
+        "other",
+        "unspecified"
+      ]
+    },
+    "maritalStatus": {
+      "single": [
+        "single",
+        "unmarried",
+        "未婚"
+      ],
+      "married": [
+        "married",
+        "已婚"
+      ],
+      "divorced": [
+        "divorced"
+      ]
+    },
+    "educationLevel": {
+      "doctoral": [
+        "doctoral",
+        "phd",
+        "doctor"
+      ],
+      "masters": [
+        "master's",
+        "master",
+        "masters",
+        "postgraduate"
+      ],
+      "bachelors": [
+        "bachelor's",
+        "bachelor",
+        "university",
+        "college"
+      ],
+      "associate": [
+        "associate",
+        "diploma"
+      ],
+      "highschool": [
+        "highschool",
+        "high school"
+      ]
+    },
+    "experienceLevel": {
+      "internship": [
+        "intern",
+        "internship"
+      ],
+      "entry": [
+        "entry",
+        "junior"
+      ],
+      "mid": [
+        "mid"
+      ],
+      "senior": [
+        "senior"
+      ],
+      "lead": [
+        "lead"
+      ],
+      "management": [
+        "manager",
+        "director"
+      ]
+    },
+    "jobType": {
+      "full-time": [
+        "fulltime",
+        "full time",
+        "全职"
+      ],
+      "part-time": [
+        "parttime",
+        "part time",
+        "兼职"
+      ],
+      "contract": [
+        "contract",
+        "freelance",
+        "temporary"
+      ],
+      "internship": [
+        "internship"
+      ]
+    }
+  },
+  "synonyms": [
+    [
+      "男",
+      "male",
+      "m",
+      "man"
+    ],
+    [
+      "女",
+      "female",
+      "f",
+      "woman"
+    ],
+    [
+      "其他",
+      "other",
+      "unspecified",
+      "不愿透露"
+    ],
+    [
+      "高中",
+      "highschool",
+      "high school",
+      "senior high school"
+    ],
+    [
+      "大专",
+      "专科",
+      "associate",
+      "associate degree",
+      "college",
+      "diploma"
+    ],
+    [
+      "本科",
+      "大学本科",
+      "bachelor",
+      "bachelor's",
+      "bachelors",
+      "undergraduate"
+    ],
+    [
+      "硕士",
+      "研究生",
+      "硕士研究生",
+      "master",
+      "master's",
+      "masters",
+      "postgraduate"
+    ],
+    [
+      "博士",
+      "博士研究生",
+      "phd",
+      "ph.d.",
+      "doctor",
+      "doctoral",
+      "doctorate"
+    ],
+    [
+      "全职",
+      "full-time",
+      "fulltime",
+      "full time"
+    ],
+    [
+      "兼职",
+      "part-time",
+      "parttime",
+      "part time"
+    ],
+    [
+      "实习",
+      "internship",
+      "intern",
+      "trainee"
+    ],
+    [
+      "全日制",
+      "full-time study",
+      "full time study"
+    ],
+    [
+      "非全日制",
+      "part-time study",
+      "part time study"
+    ],
+    [
+      "中共党员",
+      "党员",
+      "ccp member",
+      "cpc member",
+      "party member",
+      "communist party member"
+    ],
+    [
+      "中共预备党员",
+      "预备党员",
+      "probationary party member"
+    ],
+    [
+      "共青团员",
+      "团员",
+      "league member",
+      "youth league member"
+    ],
+    [
+      "群众",
+      "普通群众",
+      "the masses",
+      "ordinary citizen"
+    ],
+    [
+      "民主党派",
+      "democratic party",
+      "non-ccp party member"
+    ],
+    [
+      "未婚",
+      "single",
+      "unmarried"
+    ],
+    [
+      "已婚",
+      "married"
+    ],
+    [
+      "离异",
+      "divorced"
+    ],
+    [
+      "汉族",
+      "han",
+      "han chinese"
+    ]
+  ],
+  "options": {
+    "degree": [
+      "大专",
+      "本科",
+      "硕士",
+      "博士"
+    ],
+    "gender": [
+      "男",
+      "女"
+    ],
+    "politicalStatus": [
+      "中共党员",
+      "中共预备党员",
+      "共青团员",
+      "群众",
+      "民主党派"
+    ],
+    "jobType": [
+      "全职",
+      "实习",
+      "兼职"
+    ],
+    "fullTime": [
+      "全日制",
+      "非全日制"
+    ]
+  }
+}

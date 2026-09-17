@@ -556,8 +556,11 @@ export function useProviderSettings({
     () =>
       adapters.map((adapter: AdapterDefinition) => ({
         id: adapter.id,
-        name: t(adapter.nameKey),
-        description: adapter.descriptionKey ? t(adapter.descriptionKey) : null,
+        // 内置适配器有 i18n key；字典里导入的自定义适配器只有纯文本 label。
+        name: adapter.nameKey ? t(adapter.nameKey) : (adapter.label ?? adapter.id),
+        description: adapter.descriptionKey
+          ? t(adapter.descriptionKey)
+          : (adapter.description ?? null),
         checked: activeAdapters.includes(adapter.id),
       })),
     [activeAdapters, adapters, t],
