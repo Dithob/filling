@@ -10,6 +10,7 @@ import {
   ProviderInvocationError,
 } from '../../../shared/llm/errors';
 import { extractTextFromPdf } from '../../../shared/pdf/extractText';
+import { extractResumeFromText } from '../../../shared/pdf/ruleExtract';
 import { deleteProfile, listProfiles, saveProfile, storeFile } from '../../../shared/storage/profiles';
 import { getActiveProfileId, setActiveProfileId } from '../../../shared/storage/activeProfile';
 import {
@@ -54,6 +55,9 @@ export interface StatusState {
   message: string;
 }
 
+/** 导入 PDF 的三种处理方式：AI 解析 / 规则抽取（零 AI）/ 仅存文件。 */
+export type FileImportMode = 'parse' | 'rule' | 'store';
+
 type BusyAction = 'upload' | 'parse' | 'save' | null;
 
 interface ProfilesState {
@@ -97,7 +101,7 @@ interface UseProfilesManagerResult {
   handleDeleteProfile: (id: string) => Promise<void>;
   handleCreateProfile: () => Promise<void>;
   handleFileSelect: (file: File | null) => void;
-  handleFileAction: (mode: 'parse' | 'store') => Promise<void>;
+  handleFileAction: (mode: FileImportMode) => Promise<void>;
   closeFilePrompt: () => void;
   openParseAgainConfirm: () => void;
   closeParseAgainConfirm: () => void;
@@ -217,7 +221,7 @@ export function useProfilesManager({
   }, []);
 
   const processFile = useCallback(
-    async (file: File, mode: 'parse' | 'store') => {
+    async (file: File, mode: FileImportMode) => {
       if (!selectedProfile) {
         return;
       }
@@ -240,11 +244,38 @@ export function useProfilesManager({
         let parsedAt = selectedProfile.parsedAt;
         let validation = selectedProfile.validation;
         const parseRequested = mode === 'parse';
+        const ruleRequested = mode === 'rule';
+        const autoRequested = parseRequested || ruleRequested;
         let parseSucceeded = false;
         let parseErrorMessage: string | null = null;
         let parseErrorDetails: string | null = null;
 
-        if (parseRequested) {
+        if (ruleRequested) {
+          // 零 AI 路径：纯正则 + 章节切分，随时可用，不依赖任何模型。
+          setStatus({ phase: 'parsing', message: t('options.profileForm.status.ruleExtracting') });
+          try {
+            const outcome = extractResumeFromText(text);
+            const formValues = resumeToFormValues(outcome.resume);
+            const mergedValues = mergeResumeFormValues(form.getValues(), formValues);
+            form.reset(mergedValues);
+
+            const mergedResume = formValuesToResume(mergedValues);
+            const validationResult = validateResume(mergedResume);
+
+            resumeResult = mergedResume;
+            // 规则抽取不改写 provider：它不是 AI 产物，保持用户原有配置不变。
+            parsedAt = new Date().toISOString();
+            validation = {
+              valid: validationResult.valid,
+              errors: validationResult.errors,
+            };
+            parseSucceeded = true;
+            setStatus({ phase: 'saving', message: t('options.profileForm.status.savingRule') });
+          } catch (error: unknown) {
+            parseErrorMessage = t('options.profileForm.status.ruleFailed');
+            parseErrorDetails = error instanceof Error ? error.message : String(error);
+          }
+        } else if (parseRequested) {
           const canParse =
             selectedProvider === 'openai'
               ? openAiConfig.apiKey.trim().length > 0 && openAiConfig.model.trim().length > 0
@@ -329,7 +360,7 @@ export function useProfilesManager({
           }
         }
 
-        if (!parseRequested || parseSucceeded) {
+        if (!autoRequested || parseSucceeded) {
           setStatus({ phase: 'saving', message: t('options.profileForm.status.savingUpload') });
         }
 
@@ -349,9 +380,14 @@ export function useProfilesManager({
         await refreshProfiles(updated.id);
         setRawText(text);
 
-        if (parseRequested) {
+        if (autoRequested) {
           if (parseSucceeded) {
-            setStatus({ phase: 'complete', message: t('options.profileForm.status.parsed') });
+            setStatus({
+              phase: 'complete',
+              message: ruleRequested
+                ? t('options.profileForm.status.ruleParsed')
+                : t('options.profileForm.status.parsed'),
+            });
             setErrorDetails(null);
           } else if (parseErrorMessage) {
             setStatus({ phase: 'error', message: parseErrorMessage });
@@ -384,7 +420,7 @@ export function useProfilesManager({
   );
 
   const handleFileAction = useCallback(
-    async (mode: 'parse' | 'store') => {
+    async (mode: FileImportMode) => {
       if (!pendingFile) {
         return;
       }

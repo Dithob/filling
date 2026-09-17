@@ -120,7 +120,12 @@ options:
       rawSummary: '提取文本：$1 个字符'
       modalTitle: 导入 PDF
       modalDescription: 请选择字段簿应如何处理所选 PDF。
-      parseAction: 自动解析
+      ruleAction: 规则快速抽取
+      ruleBadge: 推荐
+      ruleHint: 不需要任何 AI，直接用内置规则识别姓名、联系方式、教育经历等字段，几秒出结果。
+      parseAction: 使用 AI 解析
+      parseHint: 调用已配置的模型，对复杂版式和非标准表述识别更准。
+      parseUnavailableHint: 尚未配置 AI 服务提供方。如需更强解析能力，请在上方「AI（可选）」中启用。
       storeAction: 仅保存文件
       parseAgain: 重新运行 AI 解析
       parseAgainConfirmTitle: 使用新的 AI 解析覆盖？
@@ -334,6 +339,10 @@ options:
     status:
       extracting: 正在提取 PDF…
       parsing: 正在解析简历…
+      ruleExtracting: 正在按规则抽取字段…（不需要 AI）
+      savingRule: 正在保存抽取结果…
+      ruleParsed: 规则抽取完成并已更新表单。
+      ruleFailed: 规则抽取失败，PDF 已保存，可手动填写或改用 AI 解析。
       savingParsed: 正在保存解析结果…
       savingUpload: 正在保存提取文本…
       parsed: 解析完成并已更新表单。

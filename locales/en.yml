@@ -120,7 +120,12 @@ options:
       rawSummary: 'Extracted text: $1 characters'
       modalTitle: Import PDF
       modalDescription: Choose how FieldBook should handle the selected PDF.
-      parseAction: Parse automatically
+      ruleAction: Quick rule extraction
+      ruleBadge: Recommended
+      ruleHint: No AI needed. Built-in rules read your name, contact details, education and more in seconds.
+      parseAction: Parse with AI
+      parseHint: Uses your configured model — better at unusual layouts and non-standard wording.
+      parseUnavailableHint: No AI provider configured yet. Enable one under "AI (optional)" above if you want stronger parsing.
       storeAction: Store file only
       parseAgain: Re-run AI parsing
       parseAgainConfirmTitle: Overwrite with new AI parsing?
@@ -334,6 +339,10 @@ options:
     status:
       extracting: Extracting PDF…
       parsing: Parsing resume…
+      ruleExtracting: Extracting fields with built-in rules… (no AI)
+      savingRule: Saving extracted fields…
+      ruleParsed: Rule extraction finished and the form was updated.
+      ruleFailed: Rule extraction failed. The PDF was stored—fill the form manually or try AI parsing.
       savingParsed: Saving parsed resume…
       savingUpload: Saving extracted text…
       parsed: Resume parsed and form updated.

@@ -682,9 +682,16 @@ export default function App() {
         onClose={closeFilePrompt}
         title={t('options.profileForm.upload.modalTitle')}
         description={t('options.profileForm.upload.modalDescription')}
+        ruleLabel={t('options.profileForm.upload.ruleAction')}
+        ruleBadge={t('options.profileForm.upload.ruleBadge')}
+        ruleHint={t('options.profileForm.upload.ruleHint')}
         parseLabel={t('options.profileForm.upload.parseAction')}
+        parseHint={t('options.profileForm.upload.parseHint')}
+        parseUnavailableHint={t('options.profileForm.upload.parseUnavailableHint')}
+        aiAvailable={providerConfigured}
         storeLabel={t('options.profileForm.upload.storeAction')}
         busy={busy}
+        onRule={() => handleFileAction('rule')}
         onParse={() => handleFileAction('parse')}
         onStore={() => handleFileAction('store')}
       />
