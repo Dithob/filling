@@ -535,6 +535,18 @@ onboarding:
     empty: 暂无档案，可上传简历或手动创建。
     delete: 删除
     deleteFailed: 删除档案失败（$1）
+    rename:
+      action: 重命名
+      title: 重命名档案
+      description: 给这份档案起个一眼能认出的名字，例如「算法岗」「腾讯-后端」。
+      label: 档案名称
+      placeholder: 例如：算法岗
+      cancel: 取消
+      confirm: 保存
+      required: 档案名称不能为空。
+      tooLong: 档案名称不能超过 $1 个字符。
+      succeeded: 已重命名
+      failed: 重命名失败（$1）
     unnamed: 未命名档案
     summary: 创建于 $1 · $2 个字符
     summaryWithFile: 创建于 $1 · $2 · $3 个字符

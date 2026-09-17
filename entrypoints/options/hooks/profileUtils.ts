@@ -28,6 +28,32 @@ export function resolveProfileName(profile: ProfileRecord, t: Translator): strin
   return t('onboarding.manage.unnamed');
 }
 
+/** 档案名长度上限：容得下「腾讯-算法岗-2026秋招」这类方案名，又不至于撑破列表。 */
+export const PROFILE_NAME_MAX_LENGTH = 40;
+
+/**
+ * 正常化用户输入的档案名：去掉首尾空白，把连续空白折成一个空格。
+ * 只做正常化，不做合法性判断——校验请走 validateProfileName。
+ */
+export function normalizeProfileName(value: string | null | undefined): string {
+  return (value ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/** 校验档案名，返回已翻译好的错误文案；合法时返回 null。 */
+export function validateProfileName(
+  value: string | null | undefined,
+  t: Translator,
+): string | null {
+  const normalized = normalizeProfileName(value);
+  if (!normalized) {
+    return t('onboarding.manage.rename.required');
+  }
+  if (normalized.length > PROFILE_NAME_MAX_LENGTH) {
+    return t('onboarding.manage.rename.tooLong', [PROFILE_NAME_MAX_LENGTH]);
+  }
+  return null;
+}
+
 export function formatProfileSummary(profile: ProfileRecord, t: Translator): string {
   const created = formatDateTime(profile.createdAt);
   const characters = (profile.rawText?.length ?? 0).toLocaleString();

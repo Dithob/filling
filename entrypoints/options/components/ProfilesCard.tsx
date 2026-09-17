@@ -15,6 +15,7 @@ interface ProfilesCardProps {
   addLabel: string;
   loadingLabel: string;
   emptyLabel: string;
+  renameLabel: string;
   deleteLabel: string;
   errorLabel?: string;
   headingIcon?: LucideIcon;
@@ -25,6 +26,7 @@ interface ProfilesCardProps {
   onCreate: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
+  onRename: (id: string) => void;
 }
 
 export function ProfilesCard({
@@ -33,6 +35,7 @@ export function ProfilesCard({
   addLabel,
   loadingLabel,
   emptyLabel,
+  renameLabel,
   deleteLabel,
   errorLabel,
   headingIcon,
@@ -43,6 +46,7 @@ export function ProfilesCard({
   onCreate,
   onSelect,
   onDelete,
+  onRename,
 }: ProfilesCardProps) {
   const HeadingIcon = headingIcon;
   return (
@@ -120,14 +124,24 @@ export function ProfilesCard({
                       </Text>
                     </Stack>
                   </UnstyledButton>
-                  <Button
-                    variant="subtle"
-                    color="red"
-                    onClick={() => onDelete(profile.id)}
-                    disabled={busy}
-                  >
-                    {deleteLabel}
-                  </Button>
+                  <Group gap={4} wrap="nowrap">
+                    <Button
+                      variant="subtle"
+                      color="gray"
+                      onClick={() => onRename(profile.id)}
+                      disabled={busy}
+                    >
+                      {renameLabel}
+                    </Button>
+                    <Button
+                      variant="subtle"
+                      color="red"
+                      onClick={() => onDelete(profile.id)}
+                      disabled={busy}
+                    >
+                      {deleteLabel}
+                    </Button>
+                  </Group>
                 </Group>
               </Paper>
             );

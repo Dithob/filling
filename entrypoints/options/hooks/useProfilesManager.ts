@@ -28,7 +28,9 @@ import type { DeepSeekConfigState } from './useSettings';
 import {
   formatProfileParsing,
   formatProfileSummary,
+  normalizeProfileName,
   resolveProfileName,
+  validateProfileName,
 } from './profileUtils';
 
 export type StatusPhase = 'idle' | 'extracting' | 'parsing' | 'saving' | 'complete' | 'error';
@@ -79,6 +81,14 @@ interface UseProfilesManagerResult {
   handleSelectProfile: (id: string) => void;
   handleDeleteProfile: (id: string) => Promise<void>;
   handleCreateProfile: () => Promise<void>;
+  /** 正在重命名的档案 id；null 表示弹窗关闭。 */
+  renameTargetId: string | null;
+  /** 弹窗输入框初始值：方案名优先，退回本人姓名，再退回空串。 */
+  renameInitialName: string;
+  validateRenameInput: (value: string) => string | null;
+  handleOpenRename: (id: string) => void;
+  handleCloseRename: () => void;
+  handleRenameProfile: (value: string) => Promise<boolean>;
   handleFileSelect: (file: File | null) => void;
   handleFileAction: (mode: FileImportMode) => Promise<void>;
   closeFilePrompt: () => void;
@@ -104,6 +114,7 @@ export function useProfilesManager({
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [filePromptOpen, setFilePromptOpen] = useState(false);
   const [parseAgainConfirmOpen, setParseAgainConfirmOpen] = useState(false);
+  const [renameTargetId, setRenameTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     selectedProfileIdRef.current = selectedProfileId;
@@ -562,6 +573,81 @@ export function useProfilesManager({
     await refreshProfiles(id);
   }, [refreshProfiles, t]);
 
+  const renameTarget = useMemo(
+    () => profiles.find((profile) => profile.id === renameTargetId) ?? null,
+    [profiles, renameTargetId],
+  );
+
+  // 档案被删掉、或列表刷新后目标消失时，别留一个指向空气的弹窗。
+  useEffect(() => {
+    if (renameTargetId && !renameTarget) {
+      setRenameTargetId(null);
+    }
+  }, [renameTarget, renameTargetId]);
+
+  const renameInitialName = useMemo(() => {
+    if (!renameTarget) {
+      return '';
+    }
+    // 和 resolveProfileName 同源，只是不再退回「未命名档案」这个展示用的兜底词。
+    return renameTarget.name?.trim() || renameTarget.basic?.name?.trim() || '';
+  }, [renameTarget]);
+
+  const validateRenameInput = useCallback((value: string) => validateProfileName(value, t), [t]);
+
+  const handleOpenRename = useCallback((id: string) => {
+    setRenameTargetId(id);
+  }, []);
+
+  const handleCloseRename = useCallback(() => {
+    setRenameTargetId(null);
+  }, []);
+
+  /**
+   * 保存新档案名。返回是否成功——失败时弹窗保持打开，用户可以直接重试。
+   * 只改 `name` 一个键、其余字段原样回写，所以不会碰到 custom / 中文专有字段。
+   */
+  const handleRenameProfile = useCallback(
+    async (value: string) => {
+      if (!renameTarget || busy) {
+        return false;
+      }
+      if (validateProfileName(value, t)) {
+        return false;
+      }
+      const name = normalizeProfileName(value);
+      if (name === (renameTarget.name ?? '')) {
+        // 没改就当作成功，静静关掉，不打扰用户。
+        setRenameTargetId(null);
+        return true;
+      }
+      setBusy(true);
+      setBusyAction(null);
+      try {
+        await saveProfile({ ...renameTarget, name });
+        await refreshProfiles();
+        setRenameTargetId(null);
+        notifications.show({
+          color: 'green',
+          title: t('onboarding.manage.rename.succeeded'),
+          message: name,
+        });
+        return true;
+      } catch (error: unknown) {
+        console.error(error);
+        notifications.show({
+          color: 'red',
+          title: t('onboarding.manage.rename.failed'),
+          message: error instanceof Error ? error.message : String(error),
+        });
+        return false;
+      } finally {
+        setBusy(false);
+      }
+    },
+    [busy, refreshProfiles, renameTarget, t],
+  );
+
   const profilesData = useMemo<ProfilesCardProfile[]>(
     () =>
       profiles.map((profile: ProfileRecord) => ({
@@ -629,6 +715,12 @@ export function useProfilesManager({
     handleSelectProfile,
     handleDeleteProfile,
     handleCreateProfile,
+    renameTargetId,
+    renameInitialName,
+    validateRenameInput,
+    handleOpenRename,
+    handleCloseRename,
+    handleRenameProfile,
     handleFileSelect,
     handleFileAction,
     closeFilePrompt,

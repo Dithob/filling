@@ -535,6 +535,18 @@ onboarding:
     empty: No profiles yet. Upload a resume or create one manually.
     delete: Delete
     deleteFailed: Unable to delete the profile ($1)
+    rename:
+      action: Rename
+      title: Rename profile
+      description: Give this profile a name you can recognise at a glance, such as "Algorithm role".
+      label: Profile name
+      placeholder: 'e.g. Algorithm role'
+      cancel: Cancel
+      confirm: Save
+      required: Enter a profile name.
+      tooLong: Profile name must be $1 characters or fewer.
+      succeeded: Profile renamed
+      failed: Unable to rename the profile ($1)
     unnamed: Untitled profile
     summary: Created $1 · $2 characters
     summaryWithFile: Created $1 · $2 · $3 characters

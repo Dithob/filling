@@ -37,6 +37,7 @@ import { GettingStartedSection, type SetupChecklistItem } from './components/Get
 import { FileUploadModal } from './components/FileUploadModal';
 import { AiParseSettingsModal } from './components/AiParseSettingsModal';
 import { ParseAgainModal } from './components/ParseAgainModal';
+import { RenameProfileModal } from './components/RenameProfileModal';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { ResumePreviewPane } from './components/ResumePreviewPane';
 import './App.css';
@@ -109,6 +110,12 @@ export default function App() {
     handleSelectProfile,
     handleDeleteProfile,
     handleCreateProfile,
+    renameTargetId,
+    renameInitialName,
+    validateRenameInput,
+    handleOpenRename,
+    handleCloseRename,
+    handleRenameProfile,
     handleFileSelect,
     handleFileAction,
     closeFilePrompt,
@@ -447,6 +454,7 @@ export default function App() {
                   addLabel={t('onboarding.manage.addProfile')}
                   loadingLabel={t('onboarding.manage.loading')}
                   emptyLabel={t('onboarding.manage.empty')}
+                  renameLabel={t('onboarding.manage.rename.action')}
                   deleteLabel={t('onboarding.manage.delete')}
                   errorLabel={profilesErrorLabel}
                   headingIcon={IdCard}
@@ -457,6 +465,7 @@ export default function App() {
                   onCreate={handleCreateProfile}
                   onSelect={handleSelectProfile}
                   onDelete={handleDeleteProfile}
+                  onRename={handleOpenRename}
                 />
 
                 <CnProfileJsonCard
@@ -652,6 +661,21 @@ export default function App() {
         onApiKeyChange={handleDeepSeekApiKeyChange}
         onModelChange={handleDeepSeekModelChange}
         onApiBaseUrlChange={handleDeepSeekApiBaseUrlChange}
+      />
+
+      <RenameProfileModal
+        opened={renameTargetId !== null}
+        onClose={handleCloseRename}
+        title={t('onboarding.manage.rename.title')}
+        description={t('onboarding.manage.rename.description')}
+        label={t('onboarding.manage.rename.label')}
+        placeholder={t('onboarding.manage.rename.placeholder')}
+        cancelLabel={t('onboarding.manage.rename.cancel')}
+        confirmLabel={t('onboarding.manage.rename.confirm')}
+        initialValue={renameInitialName}
+        validate={validateRenameInput}
+        busy={busy}
+        onConfirm={handleRenameProfile}
       />
 
       <ParseAgainModal
