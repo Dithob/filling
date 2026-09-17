@@ -38,10 +38,34 @@
 | 0 | 环境跑通 + 真实站点实测产出缺口清单 | `pnpm build` 成功；`docs/gap-analysis.md` 成文 | 🟡 构建/类型/测试全绿；真实站点实测待用户登记 |
 | 1 | 换中文精简 schema + profile.json 导入导出 | 扁平 profile 字段全部解析并填入 | ✅ 完成（含数据丢失修复） |
 | 2 | 中文 slot 扩到 51 + 最长命中优先 + 枚举归一化 + custom 兜底 | 词典命中率 ≥95%（表驱动 + 负例集） | ✅ 完成 |
-| 3 | 填充增强：file / contenteditable / date / Shadow DOM / 自定义下拉 + 只填空开关 | 测试台 `ats-cn.html` 全部填中 | ✅ 代码完成，待测试台人工走查确认 |
+| 3 | 填充增强：file / contenteditable / date / Shadow DOM / 自定义下拉 + 只填空开关 | 测试台 `ats-cn.html` 全部填中 | 🟡 代码完成；走查清单见下节「阶段 3 走查清单」（12 项可勾选） |
 | 4 | 简历库（IndexedDB 多份简历）+ 附件自动上传 | 任选简历成功上传 | ⏳ 本期用 `profile.sourceFile` 单份附件；多简历库未开始（见 `CnAttachments.resumeId` 注释指向的 `shared/storage/resumeFiles.ts`） |
 | 5 | 投递记录导出（CSV / Markdown，手动粘进 Notion）+ 投递历史 | 导出文件可直接粘贴到 Notion 数据库 | ⏳ 未开始；方向已定：先做 CSV / 复制 Markdown，不引入 Notion 凭据 |
 | 6 | 高亮打磨、e2e、i18n、manifest/README 国内化 | `pnpm compile` 无错，e2e 绿 | ⏳ 未开始 |
+
+### 阶段 3 走查清单（测试台口径，可勾选）
+
+自测台已经带**机器可读的期望值**，走查不必靠肉眼比对：`data-slot` ×44（期望命中的 FieldSlot）、`data-path` ×44（期望值在 `docs/testbed/fixtures/sample-cn-profile.json` 里的路径）、`data-check-group="stage3"` ×6（阶段 3 目标控件）。
+操作：导入夹具 → 侧边栏「扫描」→「填写匹配字段」→ 回测试台看自检面板 `docs/testbed/lib/cn-check.js` 的通过率（它按 `data-path` 取值比对）。
+
+| # | 走查项 | 夹具 | 期望 | 通过 |
+|---|---|---|---|---|
+| 1 | 枚举下拉（`<select>` ×7） | `forms/ats-cn.html` | 命中 label / value / 同义候选；无命中报 `no-option-match` 且**不得**清空已有选择 | [ ] |
+| 2 | 单选组（radio ×2） | 同上 | 命中目标项；组内已有选中项时「只填空」应跳过 | [ ] |
+| 3 | 富文本（contenteditable ×1） | 同上 | 写入整段文本；`execCommand` 不可用时回落 `textContent` | [ ] |
+| 4 | 只读日期控件（readonly ×2） | 同上 | 点击后能在日期面板里选中目标日 | [ ] |
+| 5 | 原生日期输入（`type=date` ×3） | 同上 | 按 placeholder 猜出格式后写入 | [ ] |
+| 6 | 附件（`type=file` ×1） | 同上 | 8MB 上限内可写入并派发事件 | [ ] |
+| 7 | 自定义下拉（`role=combobox`） | 同上 `data-check-group="stage3"` | 开面板后轮询到选项并点中真选项 | [ ] |
+| 8 | Shadow DOM（open root） | `forms/shadow.html` | 穿透 open root 扫到并填中 | [ ] |
+| 9 | 分步表单（3 步，字段用 `hidden` 切换） | `forms/wizard.html` | 跨步字段能否被扫到；当前需手动点「重新扫描页面」（缺口 GAP-1） | [ ] |
+| 10 | 「只填空」开关 | 设置页「填充方式」 | 开启时已有值跳过并显示原因 `has-value`；**单字段手动填不带该标志，永远覆盖** | [ ] |
+| 11 | 跨域 iframe 表单 | `forms/iframe-cross-origin.html` | 每帧独立扫描并上报 `frameId` | [ ] |
+| 12 | 杂乱页面（无 label / 靠相邻文本） | `forms/messy.html` | 靠相邻文本与 aria 兜底命中 | [ ] |
+
+**走查前先知道的空白**（实测，2026-09-18）：`ats-cn.html` 里 **checkbox 数量为 0**（`messy.html` 有 2 个，但无 `data-path`，不能机器断言）；**12 个表单里没有任何一个模拟「第二级选项异步加载」的级联下拉**（`setTimeout` / `MutationObserver` / `fetch(` 出现次数全为 0）。两项都登记在 `.plan/2026-09-18-优化方案-v2.md` 的 B4。
+
+**走查时优先复现这三条已知缺陷**（见 `docs/gap-analysis.md` 的「代码审查已识别缺陷」）：BUG-1 自定义下拉假成功、BUG-2 级联下拉不等待、BUG-3 单选组「只填空」保护失效。
 
 ## 本轮二开重构（2026-09-17，计划 `.plan/2026-09-17-二开重构计划.md`）
 
@@ -71,6 +95,8 @@
 ## 本轮：AI 收口到导入解析（2026-09-18，计划 `.plan/2026-09-18-AI收口到导入解析.md`）
 
 用户反馈「扩展太臃肿」，臃肿集中在三处：设置页的 `AI（可选）` 区块（4 个单选 + 3 组凭据表单 + 本地模型下载进度条）、入门清单的 AI 项、以及填表侧依赖 AI 的按钮。本轮把 AI 从「一个设置主题」降级为「导入动作里的一个选项」。
+
+提交：`9dc806d`（`refactor!:` 填表侧去 AI + 导入侧收口，50 文件 +2126/−3982）、`3b24ec6`（`docs:` 本文件与 quickstart / gap-analysis 同步）。验证：tsc 0 错 · vitest 23 文件 / 258 用例全过 · 产物 3.45 MB。
 
 | # | 改动 | 落点 |
 |---|---|---|
