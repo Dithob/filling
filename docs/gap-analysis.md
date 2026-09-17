@@ -38,20 +38,27 @@
 
 ---
 
-## 代码审查已识别缺陷（2026-09-18 登记，待修）
+## 代码审查已识别缺陷
 
 > 来源：`fill.ts` / `fields.ts` / `cnProfileBridge.ts` / 选项页代码复核 + 用户实际使用反馈（拿截图问「档案不能改名吗」「字段为什么都是英文」）。
-> 不是站点实测结果，故单独成节。修完请把对应行删掉或标注已修，别让这张表失真。
+> 不是站点实测结果，故单独成节。修完请把对应行从「待修」挪到「已修复」，别让这张表失真。
+
+### 已修复
+
+| # | 现象 | 类别 | 实际表现 | 修法 | 提交 |
+|---|---|---|---|---|---|
+| BUG-4 | 档案（方案）名没有改名入口 | F 交互缺陷 | `profile.name` 只在创建那一刻被写一次（新增档案硬写「新方案」；导入 json 用文件名）；卡片只渲染成一行 `<Text>` + 一个删除按钮。表单里的「姓名」编辑的是 `basics.name`（本人姓名），不是方案名 | 卡片加「重命名」按钮 + `RenameProfileModal`（回车提交、校验失败不关弹窗）；纯函数 `normalizeProfileName` / `validateProfileName` 下沉 `profileUtils.ts`，在 node 下可直接单测 | `1d271cd` |
+| BUG-5 | 「扩展字段」编辑器暴露 22 个英文保留键 | F 交互缺陷 | 桥接层借 `meta.custom` 承载 JSON Resume 没有槽位的国内字段，键沿用 CnProfile 的英文存储键名（`hometown` / `englishLevel` / `ranking` / `position` …）。面板文案「键会直接和表单标签比对」诱使以为 `hometown` 会匹配「籍贯」——实际匹配是「页面标签整体包含自定义键」，英文键命不中中文标签。**行为还不一致：改值生效、删行无效** | 编辑器拆成「中文校招字段」（18 个可编辑键，复用 `slots.*` 中文文案，原始键名降为副提示）与「自定义问答」两块，并可从下拉补充缺失的结构化字段；`position` / `projectExp` / `awards` / `resumeId` 永久隐藏（值另有结构化作者或纯内部状态）；桥接层新增 `structuredStr`，「键存在但为空」= 显式清空，于是清空某项再保存真的生效 | `0783313` |
+
+### 待修
 
 | # | 现象 | 类别 | 位置 | 期望 | 实际表现 | 归属 |
 |---|---|---|---|---|---|---|
 | BUG-1 | 自定义下拉「假成功」 | B 填不进 | `entrypoints/content/fill.ts:204-227` | 值真的选进组件 | 非 readonly 的 combobox 先直写 `input.value`，随后**同步**判非空就返回成功，从不开面板选真选项 → 带搜索框的 Ant/Vue Select 把它当未提交的搜索词，内部并未选中 | 填充器 |
 | BUG-2 | 级联下拉不等待 | B 填不进 | `entrypoints/content/fill.ts:262-278`；`entrypoints/sidepanel/App.tsx:442-461` | 第二级在选项加载完成后填中 | `fillSelect` 是同步函数，无命中即 `no-option-match`、无轮询；批量填充的 `for` 循环内 `sendMessage` **无任何 await**，N 条一次全发 → 省市区下一级必然失败 | 填充器 |
 | BUG-3 | 单选组「只填空」保护失效 | E 误填 | `entrypoints/content/fields.ts:374-388` | 组内已有选中项则跳过 | 空值判定看**该控件自身**的 `checked`，组内未选中的 radio 仍算「空」→ 批量填会去点它，可能改掉用户已选的其他选项；未勾选的 checkbox 同理会勾上 | 空值判定 |
-| BUG-4 | 档案（方案）名没有改名入口 | F 交互缺陷 | 写入点仅 `entrypoints/options/hooks/useProfilesManager.ts:547-563` + `CnProfileJsonCard.tsx:66-82`；展示 `ProfilesCard.tsx:114` | 能改方案名 | `profile.name` 只在创建那一刻被写一次（新增档案硬写「新方案」；导入 json 用文件名）；卡片只渲染成一行 `<Text>` + 一个删除按钮。表单里的「姓名」编辑的是 `basics.name`（本人姓名），不是方案名 | 选项页 |
-| BUG-5 | 「扩展字段」编辑器暴露 22 个英文保留键 | F 交互缺陷 | 根因 `shared/schema/cnProfileBridge.ts:349-369`；渲染 `ProfileForm.tsx:1605-1681` | 只列用户自定义的「问题 → 答案」 | 桥接层借 `meta.custom` 承载 JSON Resume 没有槽位的国内字段，键沿用 CnProfile 的英文存储键名（`hometown` / `englishLevel` / `ranking` / `fullTime` / `position` / `researchDirection` …）。面板文案「键会直接和表单标签比对」诱使以为 `hometown` 会匹配「籍贯」——实际匹配是「页面标签整体包含自定义键」，英文键命不中中文标签。**行为还不一致：改值生效、删行无效** | 选项页 / 桥接层 |
 
-修复批次见 `.plan/2026-09-18-优化方案-v2.md`：BUG-1/2/3 → C1-1/C1-2/C1-3（先写用例再改代码）；BUG-4 → C0-1；BUG-5 → C0-2。
+修复批次见 `.plan/2026-09-18-优化方案-v2.md`：BUG-1/2/3 → C1-1/C1-2/C1-3（先写用例再改代码）；BUG-4 / BUG-5 已随批次 C0 修完。
 
 ---
 
