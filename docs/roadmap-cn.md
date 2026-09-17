@@ -29,7 +29,7 @@
 | Shadow DOM | `querySelectorAll` 不穿透 | **已新增（open root）** |
 | 中文 slot | 33 个，偏海外 | **已扩到 51** |
 | profile schema | JSON Resume（嵌套深、ajv 校验） | **已换 CnProfile** |
-| AI | Gemini Nano / OpenAI / Gemini | 保留为可选增强，规则匹配为主 |
+| AI | Gemini Nano / OpenAI / Gemini | **已收敛为 DeepSeek 一条链路，且只服务导入解析**；填表侧 AI 全删 |
 
 ## 阶段划分与进度
 
@@ -62,11 +62,43 @@
 
 ### 本轮的关键取舍
 
-- **AI 默认关闭**：`ProviderKind` 增加 `'none'` 且 `DEFAULT_SETTINGS.provider = { kind: 'none' }`，装完不再引导去下几 GB 的本地模型。所有 AI 调用收口在 `background.ts` 的 `isAiEnabled()` 一处，未启用时返回 `{ status: 'disabled' }`；content 侧把它当作「静默无建议」而不是错误，避免每敲一个字弹红错。
-- **PDF 导入提供三条路**：规则快速抽取（推荐，零 AI）/ 使用 AI 解析（未配置模型时禁用并说明）/ 仅保存文件。
+- **AI 默认关闭**：`ProviderKind` 增加 `'none'` 且 `DEFAULT_SETTINGS.provider = { kind: 'none' }`，装完不再引导去下几 GB 的本地模型。（2026-09-18 进一步收敛为「AI 只服务导入解析」，见上一节。）
+- **PDF 导入提供三条路**：规则快速抽取（推荐，零 AI）/ 使用 AI 解析（未配密钥时先弹配置窗，不置灰禁用）/ 仅保存文件。
 - **规则抽取的边界**：以「标签锚定」为主（宁可少抽也不抽错），如实返回 `hits` / `misses`。唯二例外是民族与政治面貌——中文简历常写成 `男 | 1999-03-12 | 汉族 | 中共党员` 不给标签，因此用 56 个民族白名单 + 政治面貌枚举在**开头的个人信息块内**匹配（放开到全文会把正文的「服务群众」「家族企业」读成个人属性）。教育经历首行也支持「日期 学校 专业 学历」这种无标签写法。
 - **`meta.custom` 是国内扩展字段的通道**，`jsonresume-v1.json` 必须放行它（且不能把 `additionalProperties` 放开成 `true`）。改 `jsonresume-v1.json` 后**必须**重编译 `jsonresume-v1.validate.cjs`，命令见 `AGENTS.md`。
 
+
+## 本轮：AI 收口到导入解析（2026-09-18，计划 `.plan/2026-09-18-AI收口到导入解析.md`）
+
+用户反馈「扩展太臃肿」，臃肿集中在三处：设置页的 `AI（可选）` 区块（4 个单选 + 3 组凭据表单 + 本地模型下载进度条）、入门清单的 AI 项、以及填表侧依赖 AI 的按钮。本轮把 AI 从「一个设置主题」降级为「导入动作里的一个选项」。
+
+| # | 改动 | 落点 |
+|---|---|---|
+| 1 | 设置页删掉整个 AI 区块、导航项与入门清单 AI 项 | `options/App.tsx`、`GettingStartedSection.tsx`；删 `ProviderCard.tsx`、`CopyHelperAffix.tsx` |
+| 2 | provider 收敛：`none \| on-device \| openai \| gemini` → `none \| deepseek` | `shared/types.ts`、`storage/settings.ts`；删 `llm/chromePrompt.ts`、`llm/openai.ts`、`llm/gemini.ts` |
+| 3 | 填表侧 AI 全删（悬浮 type-ahead、字段分类、引导建议） | `background.ts`、`content/main.ts`、`sidepanel/App.tsx`；删 `guidedSuggestion.ts`、`classifySlots.ts`、`prompt.ts` |
+| 4 | 新增 CnProfile Schema + 解析提示词 + 校验修复一轮 | `shared/schema/cnProfile-v1.json`、`llm/resumeParse.ts`、`llm/resumeParsePrompt.ts` |
+| 5 | 凭据入口内联进导入弹窗，不再是设置页区块 | `options/components/AiParseSettingsModal.tsx` |
+
+### DeepSeek 的三条硬约束（决定了实现形态）
+
+1. **`response_format` 只支持 `json_object`，不支持 `json_schema`。** 所以「让模型吐出规则能完美适配的 JSON」**不可能靠服务端强约束**，只能三段式：提示词内的形状示例 → 客户端 AJV 校验 → 失败把报错**回喂修复一轮**。见 `shared/llm/resumeParse.ts`。
+2. **prompt 里必须出现 "json" 字样并给出目标形状**，否则模型会持续吐空白直到撞上 token 上限；`max_tokens` 也必须显式给足，截断的 JSON 是无效的。
+3. **thinking 模式默认开启。** 结构化抽取要显式关掉（`thinking: { type: 'disabled' }`），并且只解析 `choices[0].message.content`——`reasoning_content` 是思维链不是答案。
+
+默认模型名是 `deepseek-flash`（`deepseek-v4-flash` / `deepseek-chat` / `deepseek-reasoner` 已退役或弃用）。接新厂商只需在 `shared/llm/openaiCompatible.ts` 加一个 preset + 在 `ProviderKind` 扩一个字面量——它们都兼容 OpenAI 的 `/chat/completions` 协议。
+
+扩展页面的 `fetch` 在 `host_permissions` 覆盖下**不受 CORS 同源策略约束**（那是针对普通网页的限制），所以直连 `api.deepseek.com` 不需要 `declarativeNetRequest` 改写 `Origin`。
+
+### 为什么单独建 CnProfile schema，而不是复用 JSON Resume
+
+国内校招字段（民族 / 政治面貌 / 身份证 / 籍贯 / 紧急联系人 / 英语水平 / 排名 / 培养方式 / 实习时长 / 研究方向）在 JSON Resume 里只能塞进 `meta.custom` 这个自由字典，**模型根本不知道要填什么**；而且落库还要多过一次**有损** `cnProfileBridge`（`work[0]` 被丢弃、projects 用 `·` 拼回字符串）。直接产出扁平档案 → 直接 `mergeCnProfileData` 落库，路径最短、信息无损。
+
+**枚举不写进 schema**：枚举的唯一来源是 `shared/dictionary/defaults.json` 的 `options` 段，由 `resumeParsePrompt` 在**构建提示词时动态注入**。这样「改了字典，AI 的输出契约自动跟着改」，不会出现两份清单各自漂移。`cnProfile-v1.json` 只约束字段名与类型（`additionalProperties: false` 挡住模型凭空造字段）。
+
+### 留档：本地模型链路的教训（代码已删）
+
+Chrome 内置模型只支持 `de / en / es / fr / ja`，**不支持中文**；`availability()` 必须传与 `create()` 完全相同的参数，`expectedInputs` / `expectedOutputs` 曾必须以 `en` 声明，否则抛 `No output language was specified in a LanguageModel API request`。将来若要重新引入本地模型，先读这段。
 
 ## 字段字典（阶段 2）
 
@@ -87,10 +119,14 @@
 - **custom 兜底**：字段没命中任何 slot 时，用页面标签/上下文去 `profile.custom` 查答案（`shared/apply/customFallback.ts`），侧边栏标记为「自定义答案」。
 - **附件填充**：侧边栏读 IndexedDB → base64 → `PROMPT_FILL` 下发 → content script 用 `DataTransfer` 写 `input.files`。上限 8MB。
 - **只填空**：`AppSettings.fillMode`（默认 `emptyOnly`）只作用于批量「填写匹配字段」；手动点单个字段填入始终覆盖。
+- **AI 解析**：`shared/llm/resumeParse.ts` 编排「一次解析 → `validateCnProfile` → 不合格回喂报错修复一轮」。只读 `message.content`、忽略 `reasoning_content`；结果走 `mergeCnProfileData`（merge 语义，不会清空既有字段），并**强制删掉**模型可能编造的 `attachments.resumeId`——它指向本地简历库条目，编出来的 id 会让附件上传指向不存在的文件。
 
 ## 约定
 
 - UI 文案必须进 `locales/en.yml` + `locales/zh-CN.yml`，改后 `pnpm install` 或 `node scripts/run-wxt.mjs prepare` 重生 i18n 类型
+- 改 `shared/schema/cnProfile-v1.json` 后**必须**重编译校验器，命令与 `jsonresume-v1.json` 同形（换文件名即可）：
+  `node node_modules/ajv-cli/dist/index.js compile -s shared/schema/cnProfile-v1.json -o shared/schema/cnProfile-v1.validate.cjs --spec=draft7 -c ajv-formats`
+- 校验器的报错文案由 `shared/validate.ts` 的 `formatErrors` 统一生成，`additionalProperties` 会**点名**出问题的键（`/basic/nickName is not allowed.`）——AI 修复轮依赖这个键名才能告诉模型该删哪个字段
 - 扩展 API 用 `browser.*` 命名空间（WXT 封装），不用 `chrome.*`
 - 提交信息遵循 Conventional Commits
 - 测试台：`python -m http.server 5174 --bind 127.0.0.1 --directory docs/testbed`，夹具 `docs/testbed/fixtures/sample-cn-profile.json` 可直接导入扩展
@@ -98,6 +134,5 @@
 ## 已知限制
 
 - closed shadow root 无法穿透，这类控件扫不到。
-- **Chrome 内置模型只支持 `de / en / es / fr / ja` 五种文本语言，不支持中文。** `shared/llm/chromePrompt.ts` 统一以 `en` 声明 `expectedInputs` / `expectedOutputs`（当前 Chrome 强制校验，缺失即抛 `No output language was specified in a LanguageModel API request`），且 `availability()` 必须传与 `create()` 完全相同的参数。系统提示词全为英文、模型只原样搬运 profile 值，因此中文表单填充不受影响；但若将来要让模型**生成**中文文案（如开放题自述），本地模型不可靠，应改用 OpenAI / Gemini。
 - `ProfileForm`（旧 JSON Resume 表单）里 certificates / languages / interests / references / publications / volunteer / work 段落没有对应的 CnProfile 槽位，编辑后不会落盘；中文专属字段请在「扩展字段」编辑器或 profile.json 里维护。
 - 自定义下拉 / 日期选择器实现差异极大，失败时返回可读原因（编辑器会提示改用手动复制）。

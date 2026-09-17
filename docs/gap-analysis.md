@@ -7,7 +7,7 @@
 
 1. `node scripts/run-wxt.mjs build`（或 `pnpm build`）后，在 `chrome://extensions` 加载 `.output/chrome-mv3`。
 2. 工作台导入简历：优先「profile.json 导入」（见 `docs/testbed/fixtures/sample-cn-profile.json` 的形状），或在旧表单里维护 + 「扩展字段」编辑器补充中文专属字段。
-3. 打开目标投递页 → 侧边栏「识别字段」（可选，AI 分类）→「填写匹配字段」。
+3. 打开目标投递页 → 侧边栏「重新扫描页面」→「填写匹配字段」。字段归属完全由本地字段字典决定（2026-09-18 起填表侧不再有 AI 分类入口）。
 4. 逐字段对照下表登记。
 
 ## 分类说明
