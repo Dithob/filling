@@ -1,9 +1,6 @@
-app:
-  name: 字段簿
 contextMenu:
   fill: 使用字段簿自动填写…
 options:
-  loading: 正在加载设置…
   title: 字段簿设置
   description: 字段簿会让你的求职流程随时准备就绪。所有数据都存储在浏览器本地。
   cnProfileJson:
@@ -35,35 +32,17 @@ options:
     openSection: 打开区块
     optional: 可选
   provider:
-    heading: 服务提供方
     onDevice: Chrome 本地模型（Prompt API）
-    availability: 可用性：$1
-    refresh: 刷新
     openai: OpenAI
     gemini: Gemini
     none: 不使用 AI（推荐）
     noneHint: 字段匹配与填表完全在本地由字段字典完成——不下载模型、不需要 API 密钥、不联网。
-    apiKey: API 密钥
-    model: 模型
-    apiBaseUrl: API 基础地址
     helper: 可选。匹配与填表由本地字段字典完成——只在需要识别未命中字段或生成文案时才开启。
     moreOptions: 高级 —— 接入云端模型
     onDeviceNoChinese: 注意：Chrome 本地模型只支持 de / en / es / fr / ja，无法生成中文。
   adapters:
     heading: 字段匹配适配器
     description: 选择字段簿需要启用的字段标签适配器。所有匹配均在本地完成。
-    items:
-      en_default:
-        name: 英文（默认）
-        description: 匹配常见英文表单字段标签。
-      zh_cn:
-        name: 中文（简体）
-        description: 匹配常见中文表单字段标签。
-  actions:
-    save: 保存设置
-    saving: 正在保存…
-  feedback:
-    saved: 设置已保存。
   autofill:
     heading: 自动填充行为
     description: 选择自动填充遇到问题时的处理方式。
@@ -97,10 +76,6 @@ options:
   profiles:
     aiOptional:
       description: AI 解析是可选的。你可以直接填写信息，也可以用 profile.json 导入导出。
-    gate:
-      title: 请先连接 AI 提供方
-      description: 完成配置后即可管理档案。
-      cta: 前往提供方设置
 
   advanced:
     description: 在此管理字段记忆等高级设置。
@@ -144,7 +119,6 @@ options:
       download: 下载 PDF
       openFullscreen: 全屏查看
       openPreviewDrawer: 打开预览面板
-      modalTitle: 简历 PDF 预览
       iframeTitle: 简历 PDF 预览
       tabs:
         pdf: PDF
@@ -351,9 +325,7 @@ options:
       parseFailed: 无法解析该 PDF，文件已保存，可重试或手动复制文本。
       uploadFailed: 导入 PDF 失败。
       savingForm: 正在保存…
-      savedForm: 已保存。
       saveFailed: 保存失败。
-      profileDeleted: 简历已删除。
       profileCreated: 简历已创建。
     copyHelper:
       heading: 复制提取的文本
@@ -366,34 +338,13 @@ options:
       create: 新建简历
 popup:
   title: 字段簿简历
-  description: 在字段簿中导入一次，之后可在任何应用流程中重复使用。
-  loading: 正在加载简历…
   error: 加载简历失败（$1）
   empty: 尚未保存任何简历，请先在工作台导入 PDF。
   buttons:
     openWorkspace: 打开工作台
     openSidePanel: 打开侧边栏
-    viewDetails: 查看详情
-    hideDetails: 收起详情
-    delete: 删除
-  provider:
-    onDevice: Chrome 本地解析
-    openaiModel: OpenAI（$1）
-    openaiModelWithBase: OpenAI（$1 @ $2）
-    parsed: 已解析于 $1
-    notParsed: 尚未解析——请在工作台运行 AI 解析以获取结构化数据
   profile:
     unnamed: 未命名的简历
-    importedAt: 导入时间：$1
-    fileInfo: 'PDF：$1（$2 字节）· 原文字符数：$3'
-    manualInfo: 手动创建 · 原文字符数：$1
-    validationWarning: 存在校验警告
-  sections:
-    jsonResume: JSON 简历
-    rawText: 原始文本
-    validationWarnings: 校验警告
-  info:
-    noStructured: 尚未保存结构化简历，请先在工作台运行 AI 解析。
   overlay:
     toggleLabel: 在此标签页显示提示覆盖层
     toggleDescription: 允许字段簿监听获得焦点的输入框并提供提示，直到关闭该标签页。
@@ -422,7 +373,6 @@ sidepanel:
     dom: 字段审核
     manual: 手动复制
   states:
-    noProfilesOption: 暂无简历
     loadingProfiles: 正在加载简历…
     error: 加载简历失败（$1）
     noProfile: 请先在工作台导入简历，便于自动填写。
@@ -449,9 +399,7 @@ sidepanel:
   buttons:
     copy: 复制
     copyAll: 全部复制
-    review: 审核并填写
     openPicker: 打开选择器
-    highlight: 高亮字段
     fillField: 填写字段
   feedback:
     noMapped: 没有可直接填写的字段。
@@ -469,19 +417,6 @@ sidepanel:
     noSelection: 请选择一个字段以查看可填数据。
     selectionHint: 选择要填入该字段的数据。
   guided:
-    description: 逐项处理每个字段，逐步确认填写，并从你的选择中学习。
-    start: 开始引导填写
-    back: 上一项
-    next: 下一项
-    acceptNext: 填写并进入下一项
-    skip: 跳过并进入下一项
-    done: 完成
-    restart: 重新开始
-    jumpToUnfilled: 跳至首个未填写
-    focusPrompt: 在页面中先聚焦任意输入框即可在此预览，然后启动引导模式。
-    activeBadge: 正在处理“$1” · 已查看 $2
-    noActive: 正在查找下一个字段…
-    progressDynamic: 进度 — 已填写 $1 · 已访问 $2 · 已跳过 $3
     manualInputLabel: 填写内容
     manualInputPlaceholder: 在此输入要填入该字段的内容…
     manualInputPlaceholderWithValue: 可修改或替换建议的内容。
@@ -490,19 +425,11 @@ sidepanel:
     aiPromptPlaceholder: 请助手查找或调整此字段的值…
     aiPromptHint: 说明上下文、变体或要复用的数据；我们会参考你的简历。
     aiPromptAction: 请求 AI 填值
-    aiPromptNoProvider: 请在设置中配置 AI 提供方以启用辅助填充。
     aiPromptEmpty: 助手没有返回值，请换一种说法再试。
     aiPromptApplied: 已应用助手的建议。
     aiPromptError: 暂时无法获取建议。
-    memory:
-      heading: 记忆
-      refresh: 刷新
-      clearAll: 清除全部
-      delete: 删除
-      empty: 暂无学习到的关联。
   preview:
     file: 将打开文件选择器以上传简历。
-    select: 请在侧边栏选择一个值。
   field:
     noLabel: （无标签）
     unmapped: 未映射
@@ -556,15 +483,6 @@ sidepanel:
     noResumeFile: 请先在工作台上传简历附件
     widgetTimeout: 自定义控件没有弹出选择面板
     exception: 页面拒绝了这次填入
-    autoNoModel: 本地 AI 不可用
-    autoNoKeys: 没有可用的简历字段
-    autoNoDecision: 模型未能选择值
-    autoInvalidKey: 模型选择了未知字段
-    autoMissingValue: 选定字段没有存储的值
-    autoNonEmpty: 字段已有内容
-    autoUnsupported: 字段类型暂不支持自动填充
-    autoTimeout: 等待页面响应超时
-    autoError: 自动填充失败
   profile:
     unnamed: 未命名的简历
     label: $1 · $2
@@ -632,18 +550,10 @@ overlay:
     aiError: 暂时无法生成建议。
     aiEmpty: AI 返回了空结果。
     fill: 填写
-    skip: 跳过
     close: 关闭提示
     disableHint: 如需关闭提示浮层，请在字段簿弹窗中切换开关。
     disableHintAria: 了解如何关闭提示浮层
 onboarding:
-  title: 字段簿工作台
-  description: 在同一位置导入简历、配置 AI 服务并优化自动填充。
-  tabs:
-    profiles: 档案管理
-    aiSettings: AI 设置
-  buttons:
-    working: 正在处理…
   manage:
     heading: 档案列表
     count: 已保存档案：$1
@@ -662,22 +572,6 @@ onboarding:
     parsedGeminiAt: 已使用 $1 解析 · $2
     parsedOnDevice: 已使用本地模型解析
     parsedOnDeviceAt: 已使用本地模型解析 · $1
-  upload:
-    heading: 上传简历 PDF
-    button: 提取文本
-    helper: 所有处理都在本次浏览器会话内完成。不支持无法选择文本的扫描版 PDF。
-    current: 当前档案 "$1" 包含 $2 个字符的原始文本。
-  parse:
-    heading: 使用 AI 解析（可选）
-    helper: 可随时调整本地模型、Gemini 或 OpenAI 设置并重新解析，以完善结构化数据。
-    button: 解析简历
-    needProfile: 请选择或创建一个档案以启用解析。
-    needsSave: 解析前请先保存修改。
-    summary: 解析结果会将 JSON 简历数据写入 "$1"，便于自动填写。
-    providerSummaryOnDevice: 当前使用 Chrome 本地模型进行解析。
-    providerSummaryOpenAI: 当前使用 OpenAI 模型“$1”进行解析。
-    providerSummaryGemini: 当前使用 Gemini 模型“$1”进行解析。
-    adjustSettings: 调整 AI 设置
   openai:
     apiKey: API 密钥
     apiKeyPlaceholder: sk-...
@@ -701,32 +595,6 @@ onboarding:
       downloadFailed: '下载失败：$1'
       downloadFailedUnknown: 下载失败，请重试。
       unavailable: 当前配置或 Chrome 版本不支持本地模型。
-  edit:
-    heading: 编辑 "$1"
-    helper: 原始文本长度：$1 个字符。
-    rawLabel: 原始简历文本
-    rawSummary: $1 个字符
-    resumeLabel: 结构化简历（JSON）
-    resumeHelper: 可粘贴或编辑 JSON Resume 字段，留空表示清除结构化数据。
-    save: 保存修改
-    reset: 重置
-    invalidJson: JSON 无效，请检查括号和引号后重试。
-  status:
-    extracting: 正在提取 PDF 文本…
-    savingExtraction: 正在本地保存提取结果…
-    extractionComplete: 提取完成！已保存原始文本，可在下方继续执行 AI 解析。
-    extractionFailed: 提取失败。
-    requireApiKey: 解析前请先填写 API 密钥。
-    saveBeforeParse: 解析前请先保存修改。
-    parsing: 正在使用 AI 解析简历…
-    savingParsing: 正在保存结构化简历数据…
-    parsingComplete: 解析完成！请在弹窗中查看结构化信息。
-    parsingFailed: 解析失败。
-    profileDeleted: 已删除档案。
-    profileCreated: 已创建空白档案，请填写简历内容后保存。
-    savingEdits: 正在保存修改…
-    savedEdits: 修改已保存。
-    editFailed: 保存修改失败。
   validation:
     heading: JSON 简历校验警告
   errors:

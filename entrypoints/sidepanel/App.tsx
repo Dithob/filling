@@ -172,15 +172,6 @@ export default function App() {
       'no-resume-file': t('sidepanel.reason.noResumeFile'),
       'widget-timeout': t('sidepanel.reason.widgetTimeout'),
       'exception': t('sidepanel.reason.exception'),
-      'auto-no-model': t('sidepanel.reason.autoNoModel'),
-      'auto-no-keys': t('sidepanel.reason.autoNoKeys'),
-      'auto-no-decision': t('sidepanel.reason.autoNoDecision'),
-      'auto-invalid-key': t('sidepanel.reason.autoInvalidKey'),
-      'auto-missing-value': t('sidepanel.reason.autoMissingValue'),
-      'auto-non-empty': t('sidepanel.reason.autoNonEmpty'),
-      'auto-unsupported': t('sidepanel.reason.autoUnsupported'),
-      'auto-timeout': t('sidepanel.reason.autoTimeout'),
-      'auto-error': t('sidepanel.reason.autoError'),
     };
     return map[reason] ?? reason;
   };
