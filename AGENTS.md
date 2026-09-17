@@ -17,6 +17,20 @@
 - `pnpm compile` executes `tsc --noEmit` for a fast type-only regression check.
 - `pnpm test` runs Vitest in watch mode; append `-- --run` for a single CI-friendly pass.
 
+## Schema & Validation
+- `shared/schema/jsonresume-v1.json` is the source of truth for resume validation; it is compiled by AJV into the committed artifact `shared/schema/jsonresume-v1.validate.cjs` (imported by `shared/validate.ts`).
+- After **any** edit to `jsonresume-v1.json`, regenerate the artifact — otherwise validation silently keeps using the old schema:
+
+  ```bash
+  node node_modules/ajv-cli/dist/index.js compile \
+    -s shared/schema/jsonresume-v1.json \
+    -o shared/schema/jsonresume-v1.validate.cjs \
+    --spec=draft7 -c ajv-formats
+  ```
+
+- `shared/schema/jsonresume-v1.llm.json` is the trimmed variant handed to models as a response schema; keep its shape consistent with `jsonresume-v1.json` (it drops `format` keywords only).
+- Chinese campus fields (民族 / 政治面貌 / 身份证号 …) travel in `meta.custom` as `Record<string, string>`; `shared/schema/cnProfileBridge.ts` reserves those keys and must stay in sync with the schema's `meta` definition.
+
 ## Coding Style & Naming Conventions
 - Write TypeScript-first React components; prefer function components with hooks.
 - Match the existing 2-space indentation, trailing commas, and double-quote JSX props produced by default Prettier settings.

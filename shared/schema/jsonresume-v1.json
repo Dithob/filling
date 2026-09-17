@@ -204,7 +204,11 @@
       "properties": {
         "canonical": { "type": "string", "format": "uri" },
         "version": { "type": "string" },
-        "lastModified": { "type": "string" }
+        "lastModified": { "type": "string" },
+        "custom": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
       },
       "additionalProperties": false
     }
