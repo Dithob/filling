@@ -1,7 +1,4 @@
 import type {
-  PromptAiRequestInput,
-  PromptAiResult,
-  PromptAiRequestOptions,
   PromptFieldState,
   PromptOption,
   PromptOptionSlot,
@@ -19,10 +16,6 @@ export interface PromptOptions {
   scrollIntoView?: boolean;
   onFill: (value: string, slot: PromptOptionSlot | null) => void;
   onSkip: () => void;
-  onRequestAi?: (
-    input: PromptAiRequestInput,
-    options?: PromptAiRequestOptions,
-  ) => Promise<PromptAiResult | null>;
 }
 
 export type OverlayComponentState =

@@ -25,8 +25,9 @@ export default defineConfig({
     options_page: 'options.html',
     permissions: ['storage', 'unlimitedStorage', 'activeTab', 'sidePanel', 'contextMenus', 'tabs'],
     host_permissions: [
-      'https://api.openai.com/*',
-      'https://generativelanguage.googleapis.com/*',
+      // 「AI 解析」只走 DeepSeek 的 OpenAI 兼容接口。换厂商时改这一行即可。
+      // 注意扩展页面的 fetch 不受 CORS 限制，但域名必须在这里声明。
+      'https://api.deepseek.com/*',
       'https://*.greenhouse.io/*',
       'https://*.lever.co/*',
       'https://*.myworkdayjobs.com/*',

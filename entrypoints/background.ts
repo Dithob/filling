@@ -4,8 +4,6 @@ import type {
   FieldKind,
   FillFilePayload,
   FillResultMessage,
-  PromptAiSuggestMessage,
-  PromptAiSuggestResponse,
   PromptFieldState,
   PromptFillRequest,
   PromptOption,
@@ -16,18 +14,9 @@ import type {
 import { buildProfilePromptOptions } from '../shared/apply/promptOptions';
 import { buildCustomAnswers } from '../shared/apply/profile';
 import { matchCustomAnswer } from '../shared/apply/customFallback';
-import { toLabeledRecord } from '../shared/schema/cnProfile';
 import { resolveFieldSlot } from '../shared/apply/fieldMapping';
 import { getAllAdapterIds } from '../shared/apply/slots';
 import { formatSlotLabel } from '../shared/apply/slotLabels';
-import { requestGuidedSuggestion } from '../shared/llm/guidedSuggestion';
-import {
-  NoProviderConfiguredError,
-  ProviderAvailabilityError,
-  ProviderConfigurationError,
-  ProviderInvocationError,
-} from '../shared/llm/errors';
-import { getSettings, isAiEnabled } from '../shared/storage/settings';
 import { hydrateDictionary, watchDictionaryStorage } from '../shared/dictionary/store';
 import { getProfile } from '../shared/storage/profiles';
 import {
@@ -65,29 +54,12 @@ interface FillResultResponse extends FillResultMessage {
   kind: 'FILL_RESULT';
 }
 
-function buildPromptRequestKey(
-  tabId: number | null | undefined,
-  frameId: number | undefined,
-  requestId: string | null,
-): string | null {
-  if (tabId === null || tabId === undefined) {
-    return null;
-  }
-  if (typeof frameId !== 'number' || !Number.isFinite(frameId)) {
-    return null;
-  }
-  if (!requestId || requestId.trim().length === 0) {
-    return null;
-  }
-  return `${tabId}:${frameId}:${requestId}`;
-}
 
 const contentPorts = new Map<number, Map<number, RuntimePort>>();
 const sidePanelPorts = new Set<RuntimePort>();
 const pendingScans = new Map<string, PendingScan>();
 const pendingFills = new Map<string, PendingFill>();
 const popupOverlayTabs = new Set<number>();
-const pendingPromptAi = new Map<string, AbortController>();
 const domAccessPermissions = new Map<number, RuntimePort>();
 const overlayAdapterIds = getAllAdapterIds();
 let activeProfileId: string | null = null;
@@ -212,52 +184,6 @@ export default defineBackground(() => {
           sendResponse({ status: 'error', error: reason });
         });
       return true;
-    }
-    if (message.kind === 'PROMPT_AI_SUGGEST') {
-      const tabId = sender.tab?.id ?? null;
-      const frameId = typeof message.frameId === 'number' ? (message.frameId as number) : undefined;
-      const requestId = typeof message.requestId === 'string' ? (message.requestId as string) : null;
-      const key = buildPromptRequestKey(tabId, frameId, requestId);
-      const controller = key ? new AbortController() : null;
-      if (key && controller) {
-        const previous = pendingPromptAi.get(key);
-        if (previous) {
-          previous.abort();
-        }
-        pendingPromptAi.set(key, controller);
-      }
-      handlePromptAiSuggestMessage(message, controller)
-        .then((result) => {
-          sendResponse(result);
-        })
-        .catch((error) => {
-          const fallback = error instanceof Error ? error.message : String(error ?? 'Unknown AI error');
-          sendResponse({ status: 'error', error: fallback } satisfies PromptAiSuggestResponse);
-        })
-        .finally(() => {
-          if (key) {
-            const current = pendingPromptAi.get(key);
-            if (current === controller) {
-              pendingPromptAi.delete(key);
-            }
-          }
-        });
-      return true;
-    }
-    if (message.kind === 'PROMPT_AI_ABORT') {
-      const tabId = sender.tab?.id ?? null;
-      const frameId = typeof message.frameId === 'number' ? (message.frameId as number) : undefined;
-      const requestId = typeof message.requestId === 'string' ? (message.requestId as string) : null;
-      const key = buildPromptRequestKey(tabId, frameId, requestId);
-      if (key) {
-        const controller = pendingPromptAi.get(key);
-        if (controller) {
-          pendingPromptAi.delete(key);
-          controller.abort();
-        }
-      }
-      sendResponse({ status: 'ok' });
-      return false;
     }
     return undefined;
   });
@@ -744,102 +670,6 @@ async function handleDomAccessUpdate(port: RuntimePort, payload: Record<string, 
   broadcastDomAccess(tab.id, allowed);
 }
 
-async function handlePromptAiSuggestMessage(
-  raw: Record<string, unknown>,
-  controller: AbortController | null,
-): Promise<PromptAiSuggestResponse> {
-  const query = typeof raw.query === 'string' ? raw.query : '';
-  if (!query.trim()) {
-    return { status: 'error', error: 'Query required.' };
-  }
-  const currentValue = typeof raw.currentValue === 'string' ? raw.currentValue : '';
-  const suggestion = typeof raw.suggestion === 'string' ? raw.suggestion : '';
-  const selectedSlot =
-    typeof raw.selectedSlot === 'string' ? (raw.selectedSlot as PromptOptionSlot) : null;
-  const matches = Array.isArray(raw.matches)
-    ? (raw.matches
-        .map((entry) => {
-          if (!entry || typeof entry !== 'object') {
-            return null;
-          }
-          const normalized = entry as Record<string, unknown>;
-          const slot = typeof normalized.slot === 'string' ? (normalized.slot as PromptOptionSlot) : null;
-          const label = typeof normalized.label === 'string' ? normalized.label : '';
-          const value = typeof normalized.value === 'string' ? normalized.value : '';
-          if (!slot || !label || !value) {
-            return null;
-          }
-          return { slot, label, value } as PromptOption;
-        })
-        .filter((entry): entry is PromptOption => Boolean(entry)))
-    : [];
-  const profileId =
-    typeof raw.profileId === 'string' && raw.profileId.trim().length > 0 ? raw.profileId : null;
-  const field = parsePromptFieldState(raw.field, typeof raw.fieldId === 'string' ? raw.fieldId : undefined);
-  if (!field) {
-    return { status: 'error', error: 'Missing field context.' };
-  }
-
-  try {
-    if (controller?.signal.aborted) {
-      return { status: 'aborted' };
-    }
-    const settings = await getSettings();
-    const provider = settings.provider;
-    if (!isAiEnabled(provider)) {
-      // Single gate for every AI entry point (overlay type-ahead, guided
-      // suggestion, single-field fill): with AI off, nothing must reach a
-      // model, and callers must be able to tell "off" apart from "failed".
-      return { status: 'disabled' };
-    }
-    const profileRecord = profileId ? await getProfile(profileId) : undefined;
-    const result = await requestGuidedSuggestion({
-      provider,
-      query,
-      field: {
-        label: field.label,
-        kind: field.kind,
-        context: field.context,
-        autocomplete: field.autocomplete ?? null,
-        required: field.required,
-      },
-      slot: selectedSlot ?? null,
-      currentValue,
-      suggestion,
-      matches,
-      profile: profileRecord ? toLabeledRecord(profileRecord) : null,
-      signal: controller?.signal,
-    });
-    const normalized = result.value.trim();
-    if (!normalized) {
-      return { status: 'error', error: 'AI returned an empty response.' };
-    }
-    return {
-      status: 'ok',
-      value: normalized,
-      slot: selectedSlot ?? null,
-    };
-  } catch (error) {
-    if (
-      (error instanceof DOMException && error.name === 'AbortError') ||
-      (error instanceof Error && error.name === 'AbortError')
-    ) {
-      return { status: 'aborted' };
-    }
-    if (
-      error instanceof NoProviderConfiguredError ||
-      error instanceof ProviderConfigurationError ||
-      error instanceof ProviderAvailabilityError ||
-      error instanceof ProviderInvocationError
-    ) {
-      return { status: 'error', error: error.message };
-    }
-    if (error instanceof Error) {
-      return { status: 'error', error: error.message };
-    }
-    return { status: 'error', error: 'Unknown AI error.' };
-  }
-}
 
 function handleContentMessage(tabId: number, frameId: number, raw: unknown): void {
   if (!raw || typeof raw !== 'object') {

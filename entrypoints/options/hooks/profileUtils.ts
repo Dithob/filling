@@ -38,21 +38,13 @@ export function formatProfileSummary(profile: ProfileRecord, t: Translator): str
 }
 
 export function formatProfileParsing(profile: ProfileRecord, t: Translator): string {
-  if (!profile.provider) {
-    return t('onboarding.manage.notParsed');
-  }
   const parsedAt = profile.parsedAt ? formatDateTime(profile.parsedAt) : null;
-  if (profile.provider.kind === 'openai') {
+  // 只有 AI 解析会写 provider 快照；规则抽取不写（它不是模型产物），
+  // 所以这里判不出 provider 就等于「不是 AI 解析来的」。
+  if (profile.provider?.kind === 'deepseek') {
     return parsedAt
-      ? t('onboarding.manage.parsedOpenAIAt', [profile.provider.model, parsedAt])
-      : t('onboarding.manage.parsedOpenAI', [profile.provider.model]);
+      ? t('onboarding.manage.parsedDeepSeekAt', [profile.provider.model, parsedAt])
+      : t('onboarding.manage.parsedDeepSeek', [profile.provider.model]);
   }
-  if (profile.provider.kind === 'gemini') {
-    return parsedAt
-      ? t('onboarding.manage.parsedGeminiAt', [profile.provider.model, parsedAt])
-      : t('onboarding.manage.parsedGemini', [profile.provider.model]);
-  }
-  return parsedAt
-    ? t('onboarding.manage.parsedOnDeviceAt', [parsedAt])
-    : t('onboarding.manage.parsedOnDevice');
+  return t('onboarding.manage.notParsed');
 }

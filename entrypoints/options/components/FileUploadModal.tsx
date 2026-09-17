@@ -5,15 +5,16 @@ interface FileUploadModalProps {
   busy: boolean;
   title: string;
   description: string;
-  /** 规则抽取：默认路径，零 AI 依赖。 */
+  /** 规则解析：默认路径，零 AI 依赖。 */
   ruleLabel: string;
   ruleBadge: string;
   ruleHint: string;
-  /** AI 解析：可选路径，仅在已配置服务提供方时可用。 */
+  /** AI 解析：需要 DeepSeek 密钥。 */
   parseLabel: string;
   parseHint: string;
-  parseUnavailableHint: string;
-  aiAvailable: boolean;
+  /** 未配密钥时的提示。按钮**不禁用**——点了会引导去填密钥，再自动继续解析。 */
+  parseSetupHint: string;
+  aiConfigured: boolean;
   /** 仅保存 PDF 文本，不做任何抽取。 */
   storeLabel: string;
   onClose: () => void;
@@ -22,6 +23,12 @@ interface FileUploadModalProps {
   onStore: () => void;
 }
 
+/**
+ * 导入 PDF 时的三条路。
+ *
+ * 这里是全扩展**唯一**的 AI 入口：AI 只负责把简历文本转成档案 JSON，
+ * 填表链路完全不碰模型。所以这里也不再需要「先去设置页开 AI」这种前置。
+ */
 export function FileUploadModal({
   opened,
   busy,
@@ -32,8 +39,8 @@ export function FileUploadModal({
   ruleHint,
   parseLabel,
   parseHint,
-  parseUnavailableHint,
-  aiAvailable,
+  parseSetupHint,
+  aiConfigured,
   storeLabel,
   onClose,
   onRule,
@@ -60,16 +67,11 @@ export function FileUploadModal({
           </Stack>
 
           <Stack gap={4}>
-            <Button
-              variant="default"
-              onClick={onParse}
-              disabled={busy || !aiAvailable}
-              title={aiAvailable ? undefined : parseUnavailableHint}
-            >
+            <Button variant="default" onClick={onParse} disabled={busy}>
               {parseLabel}
             </Button>
             <Text size="xs" c="dimmed">
-              {aiAvailable ? parseHint : parseUnavailableHint}
+              {aiConfigured ? parseHint : parseSetupHint}
             </Text>
           </Stack>
 

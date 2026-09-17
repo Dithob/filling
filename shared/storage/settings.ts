@@ -1,14 +1,12 @@
-import type { AppSettings, GeminiProviderConfig, OpenAIProviderConfig, ProviderConfig } from '../types';
+import type { AppSettings, DeepSeekProviderConfig, ProviderConfig } from '../types';
 import { getAllAdapterIds } from '../apply/slots';
+import { DEEPSEEK_DEFAULT_BASE_URL, DEEPSEEK_DEFAULT_MODEL } from '../llm/openaiCompatible';
 
 const SETTINGS_KEY = 'settings:app';
-export const OPENAI_DEFAULT_BASE_URL = 'https://api.openai.com';
-export const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
 
 const DEFAULT_SETTINGS: AppSettings = {
-  // AI is opt-in. Field matching and filling are fully local (see the field
-  // dictionary), so a fresh install must not push the user into downloading
-  // Gemini Nano before they can do anything.
+  // AI 默认关闭，而且它只服务于「导入简历时的 AI 解析」这一件事。
+  // 字段匹配与填表是纯本地的（字段字典），装完就能用，不联网、不需要密钥。
   provider: {
     kind: 'none',
   },
@@ -24,45 +22,29 @@ export async function getSettings(): Promise<AppSettings> {
   if (!settings) {
     return DEFAULT_SETTINGS;
   }
-  const adapters = Array.isArray(settings.adapters) && settings.adapters.length > 0 ? settings.adapters : getAllAdapterIds();
+  const adapters =
+    Array.isArray(settings.adapters) && settings.adapters.length > 0
+      ? settings.adapters
+      : getAllAdapterIds();
   const autoFallback: AppSettings['autoFallback'] = settings.autoFallback === 'pause' ? 'pause' : 'skip';
   const highlightOverlay = settings.highlightOverlay === false ? false : true;
-  const fillMode = normalizeFillMode(settings.fillMode);
-  if (settings.provider.kind === 'openai') {
-    return {
-      provider: normalizeOpenAIProvider(settings.provider),
-      adapters,
-      autoFallback,
-      highlightOverlay,
-      fillMode,
-    };
-  }
-  if (settings.provider.kind === 'gemini') {
-    return {
-      provider: normalizeGeminiProvider(settings.provider),
-      adapters,
-      autoFallback,
-      highlightOverlay,
-      fillMode,
-    };
-  }
   return {
     provider: normalizeProvider(settings.provider),
     adapters,
     autoFallback,
     highlightOverlay,
-    fillMode,
+    fillMode: normalizeFillMode(settings.fillMode),
   };
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  const adapters = settings.adapters && settings.adapters.length > 0 ? settings.adapters : getAllAdapterIds();
-  const highlightOverlay = settings.highlightOverlay === false ? false : true;
+  const adapters =
+    settings.adapters && settings.adapters.length > 0 ? settings.adapters : getAllAdapterIds();
   const normalized: AppSettings = {
     provider: normalizeProvider(settings.provider),
     adapters,
     autoFallback: settings.autoFallback === 'pause' ? 'pause' : 'skip',
-    highlightOverlay,
+    highlightOverlay: settings.highlightOverlay === false ? false : true,
     fillMode: normalizeFillMode(settings.fillMode),
   };
   await browser.storage.local.set({ [SETTINGS_KEY]: normalized });
@@ -73,72 +55,48 @@ function normalizeFillMode(value: unknown): AppSettings['fillMode'] {
   return value === 'overwrite' ? 'overwrite' : 'emptyOnly';
 }
 
-export function createOnDeviceProvider(): ProviderConfig {
-  return { kind: 'on-device' };
+export function createDeepSeekProvider(
+  apiKey: string,
+  model: string = DEEPSEEK_DEFAULT_MODEL,
+  apiBaseUrl: string = DEEPSEEK_DEFAULT_BASE_URL,
+): DeepSeekProviderConfig {
+  return normalizeDeepSeekProvider({ kind: 'deepseek', apiKey, model, apiBaseUrl });
 }
 
 /**
- * Whether the user has opted into AI *and* given it something usable.
+ * 「AI 解析」是否可用：必须配好 Key 与模型。
  *
- * Checks that only need to know "is AI on?" (e.g. whether to show the
- * classify-these-fields button) should gate on this. Chrome's on-device model
- * cannot be probed synchronously, so it counts as enabled here; if the model
- * is missing at call time, invokeWithProvider reports it and the caller falls
- * back to the local dictionary.
+ * 这是唯一的 AI 可用性判断。填表链路不看它——那边永远不碰模型。
  */
-export function isAiEnabled(provider: ProviderConfig | null | undefined): boolean {
-  if (!provider) {
+export function isAiConfigured(provider: ProviderConfig | null | undefined): boolean {
+  if (!provider || provider.kind !== 'deepseek') {
     return false;
   }
-  switch (provider.kind) {
-    case 'none':
-      return false;
-    case 'on-device':
-      return true;
-    case 'openai':
-    case 'gemini':
-      return provider.apiKey.trim().length > 0 && provider.model.trim().length > 0;
-  }
+  return provider.apiKey.trim().length > 0 && provider.model.trim().length > 0;
 }
 
-export function createOpenAIProvider(
-  apiKey: string,
-  model: string,
-  apiBaseUrl: string = OPENAI_DEFAULT_BASE_URL,
-): ProviderConfig {
-  return normalizeOpenAIProvider({ kind: 'openai', apiKey, model, apiBaseUrl });
-}
-
-export function createGeminiProvider(apiKey: string, model: string = GEMINI_DEFAULT_MODEL): ProviderConfig {
-  return normalizeGeminiProvider({ kind: 'gemini', apiKey, model });
-}
-
-function normalizeOpenAIProvider(provider: OpenAIProviderConfig): OpenAIProviderConfig {
+function normalizeDeepSeekProvider(provider: DeepSeekProviderConfig): DeepSeekProviderConfig {
   return {
-    ...provider,
-    apiBaseUrl: provider.apiBaseUrl?.trim().length ? provider.apiBaseUrl : OPENAI_DEFAULT_BASE_URL,
-  };
-}
-
-function normalizeGeminiProvider(provider: GeminiProviderConfig): GeminiProviderConfig {
-  return {
-    kind: 'gemini',
+    kind: 'deepseek',
     apiKey: provider.apiKey?.trim() ?? '',
-    model: provider.model?.trim() ?? '',
+    model: provider.model?.trim().length ? provider.model.trim() : DEEPSEEK_DEFAULT_MODEL,
+    apiBaseUrl: provider.apiBaseUrl?.trim().length
+      ? provider.apiBaseUrl.trim()
+      : DEEPSEEK_DEFAULT_BASE_URL,
   };
 }
 
+/**
+ * 收敛 provider。
+ *
+ * 历史版本存在 `on-device` / `openai` / `gemini` 三种 kind：本地模型能力差
+ * （不支持中文）且要下几 GB，OpenAI / Gemini 与国内校招场景错配。现在只保留
+ * `none` 与 `deepseek`，**任何未知 kind 一律落回 `none`**——宁可让用户重新填一次
+ * Key，也不能让一个陈旧的 storage 值静默地把用户带进联网解析。
+ */
 function normalizeProvider(provider: ProviderConfig): ProviderConfig {
-  if (provider.kind === 'openai') {
-    return normalizeOpenAIProvider(provider);
-  }
-  if (provider.kind === 'gemini') {
-    return normalizeGeminiProvider(provider);
-  }
-  // 'none' and 'on-device' carry no extra fields; unknown kinds fall back to
-  // 'none' so a stale/手工改坏的 storage value can never opt a user into AI.
-  if (provider.kind === 'on-device') {
-    return provider;
+  if (provider.kind === 'deepseek') {
+    return normalizeDeepSeekProvider(provider);
   }
   return { kind: 'none' };
 }

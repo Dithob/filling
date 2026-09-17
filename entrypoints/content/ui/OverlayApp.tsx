@@ -8,16 +8,13 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
-  useState,
 } from 'react';
 import {
   ActionIcon,
-  Alert,
   Badge,
   Button,
   Group,
   Kbd,
-  Loader,
   MantineProvider,
   Paper,
   Stack,
@@ -153,7 +150,6 @@ function PromptContent({ state }: PromptContentProps) {
       defaultSlot={prompt.defaultSlot ?? null}
       defaultValue={prompt.defaultValue}
       preview={prompt.preview}
-      onRequestAi={prompt.onRequestAi}
     >
       {(editor) => (
         <PromptForm t={t} tLoose={tLoose} prompt={prompt} editor={editor} />
@@ -172,22 +168,19 @@ interface PromptFormProps {
 interface SuggestionCandidate {
   value: string;
   slot: PromptOptionSlot | null;
-  source: 'ai' | 'local' | 'preview';
+  source: 'local' | 'preview';
   label?: string;
 }
 
-const AI_DEBOUNCE_MS = 250;
-
+/**
+ * 字段取值浮层。
+ *
+ * 这里曾有第三条建议来源：把用户输入当 query 发给模型换一条补全建议。那条链路
+ * 已经移除——填表侧不再有任何 AI，建议只来自本地字典匹配（`rankLocalOptions`）
+ * 与解析出的预览值。
+ */
 function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
-  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
-  const [aiSlot, setAiSlot] = useState<PromptOptionSlot | null>(null);
-  // Once the background answers "AI is off" (the default setting), stop asking
-  // for the rest of this overlay session instead of firing a request per keystroke.
-  const [aiDisabled, setAiDisabled] = useState(false);
-  const requestTokenRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-  const canRequestAi = typeof prompt.onRequestAi === 'function';
 
   const localMatches = useMemo(
     () => rankLocalOptions(editor.options, editor.value, 3),
@@ -196,86 +189,10 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
 
   useEffect(() => {
     textareaRef.current?.focus({ preventScroll: true });
-    setAiSuggestion(null);
-    setAiSlot(null);
-    setAiDisabled(false);
-    requestTokenRef.current = 0;
   }, [prompt.requestId]);
-
-  useEffect(() => {
-    if (!canRequestAi || aiDisabled) {
-      setAiSuggestion(null);
-      setAiSlot(null);
-      return;
-    }
-    const trimmedValue = editor.value.trim();
-    if (!trimmedValue) {
-      setAiSuggestion(null);
-      setAiSlot(null);
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      const token = ++requestTokenRef.current;
-      editor.setAiError(null);
-      editor
-        .requestAi()
-        .then((result) => {
-          if (requestTokenRef.current !== token) {
-            return;
-          }
-          if (!result) {
-            setAiSuggestion(null);
-            setAiSlot(null);
-            return;
-          }
-          const normalized = result.value?.trim?.() ?? '';
-          if (!normalized) {
-            setAiSuggestion(null);
-            setAiSlot(null);
-            editor.setAiError(tLoose('overlay.prompt.aiEmpty'));
-            return;
-          }
-          setAiSuggestion(normalized);
-          setAiSlot(Object.prototype.hasOwnProperty.call(result, 'slot') ? result.slot ?? null : null);
-        })
-        .catch((error) => {
-          if (requestTokenRef.current !== token) {
-            return;
-          }
-          if (error instanceof Error && error.message === 'query-missing') {
-            return;
-          }
-          if (error instanceof Error && error.name === 'AbortError') {
-            return;
-          }
-          // AI turned off in settings: not an error the user needs to see.
-          // Local matches are already rendered below, so just stay quiet.
-          if (error instanceof Error && error.name === 'AiDisabledError') {
-            setAiDisabled(true);
-            setAiSuggestion(null);
-            setAiSlot(null);
-            return;
-          }
-          const message = error instanceof Error ? error.message : String(error);
-          editor.setAiError(message || tLoose('overlay.prompt.aiError'));
-          setAiSuggestion(null);
-          setAiSlot(null);
-        });
-    }, AI_DEBOUNCE_MS);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      requestTokenRef.current += 1;
-    };
-  }, [aiDisabled, canRequestAi, editor.value, editor.requestAi, editor.setAiError, tLoose]);
 
   const suggestionCandidate = useMemo<SuggestionCandidate | null>(() => {
     const trimmedValue = editor.value.trim().toLowerCase();
-    const aiValue = aiSuggestion?.trim() ?? '';
-    if (aiValue && aiValue.toLowerCase() !== trimmedValue) {
-      return { value: aiValue, slot: aiSlot, source: 'ai' };
-    }
     const fallbackMatch = localMatches.find((option) => {
       const normalized = option.value.trim();
       return normalized && normalized.toLowerCase() !== trimmedValue;
@@ -297,7 +214,7 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
       };
     }
     return null;
-  }, [aiSuggestion, aiSlot, editor.value, localMatches, prompt.preview, prompt.defaultSlot]);
+  }, [editor.value, localMatches, prompt.preview, prompt.defaultSlot]);
 
   const hasUserInput = editor.value.trim().length > 0;
   const canFill = hasUserInput || Boolean(suggestionCandidate?.value.trim().length);
@@ -305,11 +222,6 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
   const handleValueChange = useCallback(
     (next: string) => {
       editor.setValue(next);
-      setAiSuggestion(null);
-      setAiSlot(null);
-      if (editor.aiError) {
-        editor.setAiError(null);
-      }
     },
     [editor],
   );
@@ -357,8 +269,6 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
       }
       editor.setValue(candidate.value);
       editor.setSelectedSlot(candidate.slot);
-      setAiSuggestion(null);
-      setAiSlot(null);
       prompt.onFill(candidate.value, candidate.slot);
     },
     [editor, prompt],
@@ -482,13 +392,12 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
         />
         <Group justify="space-between" align="center" gap="xs">
           <Group gap={6} align="center">
-            {editor.aiLoading ? <Loader size="xs" color="brand" /> : null}
             <Text size="xs" c="dimmed">
               <Kbd>Tab</Kbd> {tLoose('overlay.prompt.tabHint')}
             </Text>
           </Group>
           {suggestionSourceLabel ? (
-            <Badge size="xs" variant="light" color={suggestionCandidate?.source === 'ai' ? 'brand' : 'gray'}>
+            <Badge size="xs" variant="light" color="gray">
               {suggestionSourceLabel}
             </Badge>
           ) : null}
@@ -511,11 +420,6 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
               </Button>
             ))}
           </Group>
-        ) : null}
-        {editor.aiError ? (
-          <Alert variant="light" color="red" radius="sm">
-            {editor.aiError}
-          </Alert>
         ) : null}
       </Stack>
       <Group justify="flex-end" gap="xs">
@@ -602,8 +506,6 @@ function rankLocalOptions(options: PromptOption[], value: string, limit: number)
 
 function formatSuggestionSource(tLoose: (key: string, params?: unknown[]) => string, candidate: SuggestionCandidate): string {
   switch (candidate.source) {
-    case 'ai':
-      return tLoose('overlay.prompt.source.ai');
     case 'local':
       return tLoose('overlay.prompt.source.local', [candidate.label ?? candidate.value]);
     case 'preview':

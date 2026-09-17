@@ -12,7 +12,6 @@ options:
     noProfile: Create a profile first to enable export.
   sections:
     gettingStarted: Getting started
-    provider: AI (optional)
     profiles: Profiles
     autofill: Autofill
     advanced: Advanced
@@ -20,26 +19,13 @@ options:
     title: Quick sections
     helper: Jump to any settings section without losing your place.
   gettingStarted:
-    helper: Two steps and you can start filling applications. AI is optional and off by default.
+    helper: Import one resume and you can start filling. Matching and filling run entirely on-device — no network needed.
     tip: 'Tip: Pin FieldBook in your browser toolbar so you can launch autofill faster.'
   checklist:
     profile:
       title: Create or import a profile
       description: Import a profile.json, upload a resume PDF, or type the details in by hand.
-    provider:
-      title: Optional — turn on an AI model
-      description: Only used to classify fields the dictionary missed, draft open-ended answers, and parse PDFs smartly. Filling works without it.
     openSection: Open section
-    optional: Optional
-  provider:
-    onDevice: Chrome on-device (Prompt API)
-    openai: OpenAI
-    gemini: Gemini
-    none: No AI (recommended)
-    noneHint: Field matching and filling run fully on-device from your field dictionary — no model download, no API key, no network.
-    helper: Optional. Matching and filling run locally from your field dictionary — turn AI on only when you want unmatched fields classified or copy generated.
-    moreOptions: Advanced — connect a hosted model
-    onDeviceNoChinese: "Note: Chrome's built-in model supports only de / en / es / fr / ja, so it cannot write Chinese."
   adapters:
     heading: Field adapters
     description: Choose which label adapters FieldBook should use when matching fields. All matching runs locally.
@@ -73,16 +59,25 @@ options:
     preferredSlot: 'Preferred slot: $1'
     lastValue: 'Last value: $1'
 
-  profiles:
-    aiOptional:
-      description: 'AI parsing is optional. You can fill in your details directly, or import/export them as a profile.json file.'
-
   advanced:
     description: Review and manage saved field memory.
+  aiParse:
+    title: Configure AI parsing (DeepSeek)
+    description: 'Only used when importing a resume: the PDF text goes to the model and comes back as a structured profile, which holds up better than rules on unusual layouts.'
+    apiKey: API key
+    apiKeyPlaceholder: sk-...
+    model: Model
+    modelHint: Defaults to deepseek-flash. Leave it alone unless you know you need a different one.
+    advanced: Advanced
+    baseUrl: API base URL
+    baseUrlPlaceholder: https://api.deepseek.com
+    privacyNote: Resume text is sent straight from your browser to the endpoint you configure. Your API key stays local. Keep this page open while parsing runs.
+    save: Save and start parsing
+    notConfigured: AI parsing is not configured yet. Add your DeepSeek API key and try again.
 
   celebration:
     title: 'All set! 🎉'
-    message: "You've connected a provider and saved a profile."
+    message: Your first profile is saved. Time to start autofilling.
     cta: Start autofilling
 
   profileForm:
@@ -100,7 +95,7 @@ options:
       ruleHint: No AI needed. Built-in rules read your name, contact details, education and more in seconds.
       parseAction: Parse with AI
       parseHint: Uses your configured model — better at unusual layouts and non-standard wording.
-      parseUnavailableHint: No AI provider configured yet. Enable one under "AI (optional)" above if you want stronger parsing.
+      parseSetupHint: No AI parsing configured yet. You'll be asked for a DeepSeek key first, then parsing starts right away.
       storeAction: Store file only
       parseAgain: Re-run AI parsing
       parseAgainConfirmTitle: Overwrite with new AI parsing?
@@ -314,24 +309,18 @@ options:
       extracting: Extracting PDF…
       parsing: Parsing resume…
       ruleExtracting: Extracting fields with built-in rules… (no AI)
-      savingRule: Saving extracted fields…
       ruleParsed: Rule extraction finished and the form was updated.
       ruleFailed: Rule extraction failed. The PDF was stored—fill the form manually or try AI parsing.
-      savingParsed: Saving parsed resume…
       savingUpload: Saving extracted text…
       parsed: Resume parsed and form updated.
+      parsedRepaired: Resume parsed and the form was updated. The first result failed schema validation and was repaired automatically.
       stored: PDF stored and ready to use.
-      parseUnavailable: Parsing unavailable. The file was stored—configure an AI provider to enable automatic parsing.
       parseFailed: Unable to parse the PDF. The file was stored—try again or copy the text manually.
       uploadFailed: Failed to import the PDF.
       savingForm: Saving form…
       saveFailed: Failed to save the profile.
       profileCreated: Profile created.
-    copyHelper:
-      heading: Copy extracted text
-      description: AI parsing is disabled. Copy the text manually when needed.
-      copy: Copy text
-      copied: Copied!
+      saved: Changes saved.
     empty:
       heading: No profile selected
       description: Select a profile from the list or create a new one to start editing.
@@ -363,9 +352,6 @@ sidepanel:
   toolbar:
     scanning: Scanning…
     rescan: Rescan page
-    classify: Classify fields
-    classifyNeedsAi: Turn on an AI model in settings to classify fields (optional — dictionary matching works without it)
-    classifying: Classifying…
     fillMapped: Fill mapped fields
     clearOverlay: Clear overlay
     manageProfiles: Manage profiles
@@ -408,7 +394,6 @@ sidepanel:
       n: Filling $1 fields…
     copied: Copied $1
     noClipboard: Unable to copy to clipboard
-    classificationUpdated: Classification updated
     noValues: No stored values available. Update the profile first.
     noResumeFile: This profile has no uploaded resume yet. Upload one in the options page first.
     fileTooLarge: The resume is larger than 8 MB, too big to attach automatically.
@@ -421,22 +406,13 @@ sidepanel:
     manualInputPlaceholder: Type a value to fill this field…
     manualInputPlaceholderWithValue: Edit or replace the suggested value.
     manualInputHint: Accepted values will be remembered for next time.
-    aiPromptLabel: Type or say what to use
-    aiPromptPlaceholder: Ask the assistant to look up or adjust this value…
-    aiPromptHint: Mention context, variations, or data to reuse. We will reference your profile when possible.
-    aiPromptAction: Ask AI for a value
-    aiPromptEmpty: The assistant did not provide a value. Try rephrasing your request.
-    aiPromptApplied: Applied the assistant's suggestion.
-    aiPromptError: Unable to fetch a suggestion right now.
   preview:
     file: Open the file picker to upload your resume.
   field:
     noLabel: (No label)
     unmapped: unmapped
-    aiSuffix: (AI)
     fileSummary: 'File upload: you will be prompted to choose a file.'
     suggestedProfile: 'Suggested (profile): $1'
-    suggestedAI: 'Suggested (AI): $1'
     customAnswer: Custom answer
     suggestedCustom: 'Suggested (custom answer): $1'
     selectedValue: 'Selected: $1'
@@ -444,7 +420,6 @@ sidepanel:
     selectorLabel: Stored data
     selectPlaceholder: Select a value…
     noValues: No stored values available. Update the profile to enable autofill.
-    aiNote: 'AI note: $1'
     meta: $1 · $2 · frame $3
     autoKey: 'Auto fill key: $1'
     autoKeyWithConfidence: 'Auto fill key: $1 (confidence $2%)'
@@ -544,11 +519,8 @@ overlay:
     inputPlaceholder: Describe the value or start typing…
     tabHint: Accept suggestion
     source:
-      ai: AI suggestion
       local: 'Profile match: $1'
       preview: Suggested value
-    aiError: Unable to generate a suggestion.
-    aiEmpty: AI returned an empty response.
     fill: Fill
     close: Close prompt
     disableHint: Toggle prompt overlays from the FieldBook popup to hide these suggestions.
@@ -562,39 +534,13 @@ onboarding:
     error: Unable to load profiles ($1)
     empty: No profiles yet. Upload a resume or create one manually.
     delete: Delete
+    deleteFailed: Unable to delete the profile ($1)
     unnamed: Untitled profile
     summary: Created $1 · $2 characters
     summaryWithFile: Created $1 · $2 · $3 characters
     notParsed: Not parsed yet
-    parsedOpenAI: Parsed with $1
-    parsedOpenAIAt: Parsed with $1 · $2
-    parsedGemini: Parsed with $1
-    parsedGeminiAt: Parsed with $1 · $2
-    parsedOnDevice: Parsed on-device
-    parsedOnDeviceAt: Parsed on-device · $1
-  openai:
-    apiKey: API key
-    apiKeyPlaceholder: sk-...
-    model: Model
-    baseUrl: API base URL
-    baseUrlPlaceholder: https://api.openai.com
-    helper: We send requests directly to OpenAI from your browser. Keep API keys private; they are stored locally.
-  gemini:
-    apiKey: API key
-    apiKeyPlaceholder: AIza...
-    model: Model
-    helper: We send requests directly to Gemini from your browser. Keep API keys private; they are stored locally.
-  provider:
-    onDevice:
-      downloadable: Download the on-device model to enable parsing. Chrome will fetch Gemini Nano after you confirm.
-      downloading: Model download in progress. Keep this tab open while Chrome finishes.
-      available: Model downloaded. You can now use the Chrome on-device provider.
-      download: Download model
-      retry: Retry download
-      progress: Downloading… $1%
-      downloadFailed: 'Download failed: $1'
-      downloadFailedUnknown: Download failed. Try again.
-      unavailable: Not available in this profile or Chrome version.
+    parsedDeepSeek: Parsed with $1
+    parsedDeepSeekAt: Parsed with $1 · $2
   validation:
     heading: JSON Resume validation warnings
   errors:

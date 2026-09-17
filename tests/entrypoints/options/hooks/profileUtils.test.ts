@@ -53,14 +53,19 @@ describe('profile formatting helpers', () => {
     expect(formatProfileSummary(profile, t)).toContain('resume.pdf');
   });
 
-  it('renders provider metadata for OpenAI profiles', () => {
+  it('renders the model name for AI-parsed profiles', () => {
     const profile: ProfileRecord = {
       ...baseProfile,
-      provider: { kind: 'openai', model: 'gpt-mini', apiBaseUrl: '' },
+      provider: {
+        kind: 'deepseek',
+        model: 'deepseek-flash',
+        apiBaseUrl: 'https://api.deepseek.com',
+      },
       parsedAt: '2024-02-01T00:00:00.000Z',
     };
     const parsing = formatProfileParsing(profile, t);
-    expect(parsing).toContain('onboarding.manage.parsedOpenAIAt');
+    expect(parsing).toContain('onboarding.manage.parsedDeepSeekAt');
+    expect(parsing).toContain('deepseek-flash');
   });
 
   it('handles missing provider details', () => {

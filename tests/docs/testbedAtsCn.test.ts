@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { resolveSlotFromLabel, getAllAdapterIds } from '../../shared/apply/slots';
 import { matchCustomAnswer } from '../../shared/apply/customFallback';
-import { CLASSIFICATION_KNOWN_SLOTS } from '../../shared/schema/fieldClassificationResponse';
+import { getDictionary } from '../../shared/dictionary/store';
 
 const HTML_PATH = join(process.cwd(), 'docs/testbed/forms/ats-cn.html');
 const FIXTURE_PATH = join(process.cwd(), 'docs/testbed/fixtures/sample-cn-profile.json');
@@ -30,6 +30,18 @@ function extractDeclaredSlots(source: string): string[] {
 }
 
 const LABELS = extractLabels(html);
+
+/**
+ * 词典匹配表里真正声明过的全部 FieldSlot。
+ *
+ * 这份清单原先来自 `fieldClassificationResponse.ts` 的 `CLASSIFICATION_KNOWN_SLOTS`
+ * ——那是「AI 分类字段」那条链路的产物，已随填表侧 AI 一起下线。改成直接从字段
+ * 字典的匹配表取键：字典是字段知识的唯一来源，用它当基准就不会出现「两份清单
+ * 各自漂移、谁也没发现」的老问题。
+ */
+const KNOWN_SLOTS = new Set(
+  getDictionary().adapters.flatMap((adapter) => Object.keys(adapter.matchers)),
+);
 
 /** 这些字段本来就不该命中 slot：附件留给阶段 4，其余走 custom 兜底。 */
 const NO_SLOT_LABELS = new Set(['简历附件', '是否服从调剂', '你为什么选择我们']);
@@ -60,12 +72,10 @@ describe('ats-cn 测试台', () => {
     );
   });
 
-  it('页面上声明的 data-slot 都是合法的 FieldSlot', () => {
+  it('页面上声明的 data-slot 都是词典里真实存在的 FieldSlot', () => {
     const declared = extractDeclaredSlots(html);
     expect(declared.length).toBeGreaterThan(30);
-    const invalid = declared.filter(
-      (slot) => slot !== 'custom' && !(CLASSIFICATION_KNOWN_SLOTS as readonly string[]).includes(slot),
-    );
+    const invalid = declared.filter((slot) => slot !== 'custom' && !KNOWN_SLOTS.has(slot));
     expect(invalid, `未知 slot: ${invalid.join(' / ')}`).toEqual([]);
   });
 

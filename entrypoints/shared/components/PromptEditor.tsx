@@ -1,11 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type {
-  PromptAiRequestInput,
-  PromptAiResult,
-  PromptOption,
-  PromptOptionSlot,
-  PromptAiRequestOptions,
-} from '../../../shared/apply/types';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import type { PromptOption, PromptOptionSlot } from '../../../shared/apply/types';
 
 interface PromptEditorProps {
   options?: PromptOption[];
@@ -16,12 +10,6 @@ interface PromptEditorProps {
   selectedSlot?: PromptOptionSlot | null;
   onValueChange?: (value: string) => void;
   onSlotChange?: (slot: PromptOptionSlot | null) => void;
-  instruction?: string;
-  onInstructionChange?: (value: string) => void;
-  onRequestAi?: (
-    input: PromptAiRequestInput,
-    options?: PromptAiRequestOptions,
-  ) => Promise<PromptAiResult | null>;
   children: (state: PromptEditorState) => ReactNode;
 }
 
@@ -31,18 +19,18 @@ export interface PromptEditorState {
   selectedSlot: PromptOptionSlot | null;
   setSelectedSlot: (slot: PromptOptionSlot | null) => void;
   options: PromptOption[];
-  instruction: string;
-  setInstruction: (value: string) => void;
-  aiLoading: boolean;
-  aiError: string | null;
-  setAiError: (message: string | null) => void;
-  requestAi: () => Promise<PromptAiResult | null>;
-  reset: () => void;
   defaultSlot?: PromptOptionSlot | null;
   defaultValue?: string;
   preview?: string;
 }
 
+/**
+ * 字段取值编辑器：选槽位 + 改值。
+ *
+ * 这里曾经还挂着一条「让 AI 生成这个字段的答案」的通道（输入指令 → 调模型 →
+ * 回填）。那条链路已经移除：AI 现在只负责导入简历时的解析，填表侧的取值完全
+ * 由字段字典与用户手动输入完成。
+ */
 export function PromptEditor({
   options,
   defaultSlot,
@@ -52,32 +40,16 @@ export function PromptEditor({
   selectedSlot: controlledSlot,
   onValueChange,
   onSlotChange,
-  instruction: controlledInstruction,
-  onInstructionChange,
-  onRequestAi,
   children,
 }: PromptEditorProps) {
   const normalizedOptions = useMemo(() => options ?? [], [options]);
   const [internalValue, setInternalValue] = useState<string>(defaultValue ?? preview ?? '');
   const [internalSlot, setInternalSlot] = useState<PromptOptionSlot | null>(defaultSlot ?? null);
-  const [internalInstruction, setInternalInstruction] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-  const pendingAbortRef = useRef<AbortController | null>(null);
-
-  const abortPendingRequest = useCallback(() => {
-    if (pendingAbortRef.current) {
-      pendingAbortRef.current.abort();
-      pendingAbortRef.current = null;
-    }
-  }, []);
 
   const valueIsControlled = controlledValue !== undefined;
   const slotIsControlled = controlledSlot !== undefined;
-  const instructionIsControlled = controlledInstruction !== undefined;
 
   useEffect(() => {
-    abortPendingRequest();
     let slot: PromptOptionSlot | null = defaultSlot ?? null;
     let nextValue = defaultValue ?? preview ?? '';
 
@@ -97,35 +69,10 @@ export function PromptEditor({
     if (!valueIsControlled) {
       setInternalValue(nextValue);
     }
-    if (!instructionIsControlled) {
-      setInternalInstruction('');
-    } else {
-      onInstructionChange?.('');
-    }
-    setAiError(null);
-    setAiLoading(false);
-  }, [
-    defaultSlot,
-    defaultValue,
-    preview,
-    normalizedOptions,
-    slotIsControlled,
-    valueIsControlled,
-    instructionIsControlled,
-    onInstructionChange,
-    abortPendingRequest,
-  ]);
-
-  useEffect(
-    () => () => {
-      abortPendingRequest();
-    },
-    [abortPendingRequest],
-  );
+  }, [defaultSlot, defaultValue, preview, normalizedOptions, slotIsControlled, valueIsControlled]);
 
   const value = valueIsControlled ? controlledValue ?? '' : internalValue;
   const selectedSlot = slotIsControlled ? controlledSlot ?? null : internalSlot;
-  const instructionValue = instructionIsControlled ? controlledInstruction ?? '' : internalInstruction;
 
   const setValue = useCallback(
     (next: string) => {
@@ -147,64 +94,6 @@ export function PromptEditor({
     [slotIsControlled, onSlotChange],
   );
 
-  const setInstructionValue = useCallback(
-    (next: string) => {
-      if (!instructionIsControlled) {
-        setInternalInstruction(next);
-      }
-      onInstructionChange?.(next);
-    },
-    [instructionIsControlled, onInstructionChange],
-  );
-
-  const requestAi = useCallback(async (): Promise<PromptAiResult | null> => {
-    if (!onRequestAi) {
-      return null;
-    }
-    const trimmedInstruction = instructionValue.trim();
-    const fallbackQuery = value.trim();
-    const trimmedQuery = trimmedInstruction || fallbackQuery;
-    if (!trimmedQuery) {
-      throw new Error('query-missing');
-    }
-    abortPendingRequest();
-    const controller = new AbortController();
-    pendingAbortRef.current = controller;
-    setAiError(null);
-    setAiLoading(true);
-    try {
-      const selected = selectedSlot ? normalizedOptions.find((option) => option.slot === selectedSlot) : undefined;
-      const suggestion = selected?.value ?? preview ?? '';
-      const matches = matchPromptOptions(normalizedOptions, trimmedQuery);
-      return await onRequestAi(
-        {
-          query: trimmedQuery,
-          currentValue: value,
-          suggestion,
-          selectedSlot,
-          matches,
-        },
-        { signal: controller.signal },
-      );
-    } finally {
-      if (pendingAbortRef.current === controller) {
-        pendingAbortRef.current = null;
-      }
-      setAiLoading(false);
-    }
-  }, [instructionValue, value, onRequestAi, selectedSlot, normalizedOptions, preview, abortPendingRequest]);
-
-  const reset = useCallback(() => {
-    abortPendingRequest();
-    if (!instructionIsControlled) {
-      setInternalInstruction('');
-    } else {
-      onInstructionChange?.('');
-    }
-    setAiError(null);
-    setAiLoading(false);
-  }, [instructionIsControlled, onInstructionChange, abortPendingRequest]);
-
   return (
     <>
       {children({
@@ -213,43 +102,10 @@ export function PromptEditor({
         selectedSlot,
         setSelectedSlot,
         options: normalizedOptions,
-        instruction: instructionValue,
-        setInstruction: setInstructionValue,
-        aiLoading,
-        aiError,
-        setAiError,
-        requestAi,
-        reset,
         defaultSlot,
         defaultValue,
         preview,
       })}
     </>
   );
-}
-
-function matchPromptOptions(options: PromptOption[], query: string, limit = 5): PromptOption[] {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return [];
-  }
-
-  const scored = options
-    .map((option) => {
-      const label = option.label.toLowerCase();
-      const value = option.value.toLowerCase();
-      const labelIndex = label.indexOf(normalizedQuery);
-      const valueIndex = value.indexOf(normalizedQuery);
-      const hasMatch = labelIndex >= 0 || valueIndex >= 0;
-      const score = hasMatch ? Math.min(labelIndex >= 0 ? labelIndex : Infinity, valueIndex >= 0 ? valueIndex + 100 : Infinity) : Infinity;
-      return {
-        option,
-        score,
-      };
-    })
-    .filter(({ score }) => Number.isFinite(score));
-
-  scored.sort((a, b) => a.score - b.score);
-
-  return scored.slice(0, limit).map(({ option }) => option);
 }

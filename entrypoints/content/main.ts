@@ -3,9 +3,6 @@ import type {
   FieldAttributes,
   FieldKind,
   FillResultStatus,
-  PromptAiSuggestMessage,
-  PromptAiAbortMessage,
-  PromptAiResult,
   PromptFieldState,
   PromptFillRequest,
   PromptOptionSlot,
@@ -102,119 +99,6 @@ interface SerializedField {
   attributes?: FieldAttributes;
   hasValue: boolean;
   readOnly?: boolean;
-}
-
-function createAbortError(): Error {
-  try {
-    return new DOMException('Aborted', 'AbortError');
-  } catch {
-    const error = new Error('Aborted');
-    error.name = 'AbortError';
-    return error;
-  }
-}
-
-/**
- * 用户没启用 AI。用独立的名字而不是普通 Error，是为了让浮层能静默忽略它——
- * 否则每敲几个字就会弹一次"没有配置 AI 提供方"的报错。
- */
-function createAiDisabledError(): Error {
-  const error = new Error('AI is disabled');
-  error.name = 'AiDisabledError';
-  return error;
-}
-
-function requestPromptAi(
-  payload: PromptAiSuggestMessage,
-  signal?: AbortSignal,
-): Promise<PromptAiResult> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let requestStarted = false;
-    let abortListener: (() => void) | null = null;
-
-    const cleanup = () => {
-      if (signal && abortListener) {
-        signal.removeEventListener('abort', abortListener);
-        abortListener = null;
-      }
-    };
-
-    const settle = (handler: () => void) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      handler();
-    };
-
-    const abortPayload: PromptAiAbortMessage = {
-      kind: 'PROMPT_AI_ABORT',
-      requestId: payload.requestId,
-      fieldId: payload.fieldId,
-      frameId: payload.frameId,
-    };
-
-    const rejectWithAbort = () => {
-      reject(createAbortError());
-    };
-
-    abortListener = () => {
-      if (!requestStarted) {
-        settle(rejectWithAbort);
-        return;
-      }
-      settle(() => {
-        void browser.runtime.sendMessage(abortPayload).catch((error) => {
-          console.warn('Failed to send AI abort message', error);
-        });
-        rejectWithAbort();
-      });
-    };
-
-    if (signal?.aborted) {
-      abortListener();
-      return;
-    }
-
-    if (signal) {
-      signal.addEventListener('abort', abortListener, { once: true });
-    }
-
-    requestStarted = true;
-    browser.runtime
-      .sendMessage(payload)
-      .then((response) => {
-        settle(() => {
-          if (!response) {
-            reject(new Error('AI request failed'));
-            return;
-          }
-          if (response.status === 'aborted') {
-            rejectWithAbort();
-            return;
-          }
-          if (response.status === 'disabled') {
-            reject(createAiDisabledError());
-            return;
-          }
-          if (response.status === 'ok') {
-            resolve({
-              value: response.value,
-              slot: response.slot ?? null,
-            });
-            return;
-          }
-          reject(new Error(response.error || 'AI request failed'));
-        });
-      })
-      .catch((error) => {
-        settle(() => {
-          reject(error instanceof Error ? error : new Error(String(error)));
-        });
-      });
-  });
 }
 
 export default defineContentScript({
@@ -660,22 +544,6 @@ export default defineContentScript({
           });
           clearOverlay();
         },
-        onRequestAi: async (input, options) => {
-          const messagePayload: PromptAiSuggestMessage = {
-            kind: 'PROMPT_AI_SUGGEST',
-            requestId: message.requestId,
-            fieldId: message.fieldId,
-            frameId: message.frameId,
-            field: promptField,
-            query: input.query,
-            currentValue: input.currentValue,
-            suggestion: input.suggestion,
-            selectedSlot: input.selectedSlot ?? null,
-            matches: input.matches,
-            profileId,
-          };
-          return await requestPromptAi(messagePayload, options?.signal);
-        },
       });
     }
 
@@ -753,22 +621,6 @@ export default defineContentScript({
         },
         onSkip: () => {
           clearOverlay();
-        },
-        onRequestAi: async (input, options) => {
-          const payload: PromptAiSuggestMessage = {
-            kind: 'PROMPT_AI_SUGGEST',
-            requestId,
-            fieldId: message.fieldId,
-            frameId: message.frameId,
-            field: promptFieldSnapshot,
-            query: input.query,
-            currentValue: input.currentValue,
-            suggestion: input.suggestion,
-            selectedSlot: input.selectedSlot ?? null,
-            matches: input.matches,
-            profileId,
-          };
-          return await requestPromptAi(payload, options?.signal);
         },
       });
     }

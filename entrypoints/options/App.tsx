@@ -22,11 +22,10 @@ import {
 } from '@mantine/core';
 import { useForm } from 'react-hook-form';
 import { useMediaQuery } from '@mantine/hooks';
-import { Cpu, IdCard, PanelRightOpen, SlidersHorizontal, Sparkles, WandSparkles } from 'lucide-react';
+import { IdCard, PanelRightOpen, SlidersHorizontal, Sparkles, WandSparkles } from 'lucide-react';
 import { notifications } from '@mantine/notifications';
 import { ProfilesCard } from './components/ProfilesCard';
 import { CnProfileJsonCard } from './components/CnProfileJsonCard';
-import { ProviderCard } from './components/ProviderCard';
 import { AdaptersCard } from './components/AdaptersCard';
 import { AutofillCard } from './components/AutofillCard';
 import { FillModeCard } from './components/FillModeCard';
@@ -36,8 +35,8 @@ import { SectionHeading } from './components/SectionHeading';
 import { OptionsNavigationCard, type TocNavLink } from './components/OptionsNavigationCard';
 import { GettingStartedSection, type SetupChecklistItem } from './components/GettingStartedSection';
 import { FileUploadModal } from './components/FileUploadModal';
+import { AiParseSettingsModal } from './components/AiParseSettingsModal';
 import { ParseAgainModal } from './components/ParseAgainModal';
-import { CopyHelperAffix } from './components/CopyHelperAffix';
 import { CelebrationOverlay } from './components/CelebrationOverlay';
 import { ResumePreviewPane } from './components/ResumePreviewPane';
 import './App.css';
@@ -46,7 +45,7 @@ import {
   createEmptyResumeFormValues,
   type ResumeFormValues,
 } from './components/ProfileForm';
-import { useProviderSettings, type ProviderKind } from './hooks/useProviderSettings';
+import { useSettings } from './hooks/useSettings';
 import { useMemoryStore } from './hooks/useMemoryStore';
 import { useProfilesManager } from './hooks/useProfilesManager';
 
@@ -61,45 +60,32 @@ export default function App() {
   const [celebrationVersion, setCelebrationVersion] = useState(0);
   const [workspaceOpen, setWorkspaceOpen] = useState(false);
   const [previewDrawerOpen, setPreviewDrawerOpen] = useState(false);
+  const [aiSetupOpen, setAiSetupOpen] = useState(false);
+  const [pendingAiParse, setPendingAiParse] = useState(false);
   const statusNotificationId = useRef<string | null>(null);
   const [highlightedSection, setHighlightedSection] = useState<string | null>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
   const setupSectionRef = useRef<HTMLDivElement | null>(null);
-  const providerSectionRef = useRef<HTMLDivElement | null>(null);
   const profilesSectionRef = useRef<HTMLDivElement | null>(null);
   const autofillSectionRef = useRef<HTMLDivElement | null>(null);
   const advancedSectionRef = useRef<HTMLDivElement | null>(null);
   const { t } = i18n;
   const translate = t as unknown as (key: string, substitutions?: unknown) => string;
-  const providerLabels: Record<ProviderKind, string> = {
-    none: t('options.provider.none'),
-    'on-device': t('options.provider.onDevice'),
-    openai: t('options.provider.openai'),
-    gemini: t('options.provider.gemini'),
-  };
   const {
-    selectedProvider,
-    openAiConfig,
-    geminiConfig,
+    deepSeekConfig,
     autoFallback,
     fillMode,
     highlightOverlay,
-    availability,
-    canUseOnDevice,
-    onDeviceSupport,
-    providerConfigured,
+    aiConfigured,
     adapterItems,
-    handleProviderChange,
-    handleOpenAiApiKeyChange,
-    handleOpenAiModelChange,
-    handleOpenAiApiBaseUrlChange,
-    handleGeminiApiKeyChange,
-    handleGeminiModelChange,
+    handleDeepSeekApiKeyChange,
+    handleDeepSeekModelChange,
+    handleDeepSeekApiBaseUrlChange,
     handleToggleAdapter,
     handleAutoFallbackChange,
     handleFillModeChange,
     handleHighlightOverlayChange,
-  } = useProviderSettings({ t, translate });
+  } = useSettings({ translate });
   const {
     profiles,
     profilesState,
@@ -117,7 +103,6 @@ export default function App() {
     rawSummary,
     formSaving,
     canParseAgain,
-    showCopyHelper,
     profilesErrorLabel,
     handleSaveForm,
     handleResetForm,
@@ -132,12 +117,8 @@ export default function App() {
     handleParseAgain,
   } = useProfilesManager({
     form,
-    selectedProvider,
-    openAiConfig,
-    geminiConfig,
-    availability,
+    deepSeekConfig,
     t,
-    translate,
   });
   const { memoryItems, memoryState, refreshMemory, clearMemory, deleteMemory, formatMemoryEntry } =
     useMemoryStore({ t });
@@ -195,6 +176,33 @@ export default function App() {
     ],
   );
 
+  /**
+   * 点「AI 解析」时：配好了就直接跑，没配就先弹凭据配置，配完自动接着解析——
+   * 用户不用在两处之间来回跳。
+   */
+  const handleAiParseRequest = useCallback(() => {
+    if (aiConfigured) {
+      void handleFileAction('parse');
+      return;
+    }
+    setPendingAiParse(true);
+    setAiSetupOpen(true);
+  }, [aiConfigured, handleFileAction]);
+
+  const handleAiSetupClose = useCallback(() => {
+    setAiSetupOpen(false);
+    setPendingAiParse(false);
+  }, []);
+
+  const handleAiSetupSaved = useCallback(() => {
+    setAiSetupOpen(false);
+    if (!pendingAiParse) {
+      return;
+    }
+    setPendingAiParse(false);
+    void handleFileAction('parse');
+  }, [handleFileAction, pendingAiParse]);
+
   useEffect(() => {
     let mounted = true;
     browser.storage.local
@@ -219,7 +227,6 @@ export default function App() {
   const hasProfiles = profiles.length > 0;
   const setupChecklist = useMemo<SetupChecklistItem[]>(
     () => [
-      // The required step comes first: you can be productive with zero AI.
       {
         id: 'profile',
         complete: hasProfiles,
@@ -227,16 +234,8 @@ export default function App() {
         description: t('options.checklist.profile.description'),
         target: 'section-profiles',
       },
-      {
-        id: 'provider',
-        complete: providerConfigured,
-        title: t('options.checklist.provider.title'),
-        description: t('options.checklist.provider.description'),
-        target: 'section-provider',
-        optional: true,
-      },
     ],
-    [providerConfigured, hasProfiles, t],
+    [hasProfiles, t],
   );
 
   const navLinks = useMemo<TocNavLink[]>(
@@ -246,12 +245,6 @@ export default function App() {
         label: t('options.sections.gettingStarted'),
         icon: Sparkles,
         color: 'orange',
-      },
-      {
-        id: 'section-provider',
-        label: t('options.sections.provider'),
-        icon: Cpu,
-        color: 'brand',
       },
       {
         id: 'section-profiles',
@@ -276,9 +269,6 @@ export default function App() {
   );
 
   useEffect(() => {
-    // Onboarding completion must not depend on having configured a model:
-    // with AI optional, requiring it here meant the celebration overlay could
-    // never fire for a user who deliberately runs without AI.
     if (!hasProfiles || onboardingCompleted === null) {
       return;
     }
@@ -440,54 +430,8 @@ export default function App() {
                 headingDescription={t('options.gettingStarted.helper')}
                 checklist={setupChecklist}
                 openSectionLabel={t('options.checklist.openSection')}
-                optionalLabel={t('options.checklist.optional')}
                 tip={t('options.gettingStarted.tip')}
                 onNavigate={handleScrollTo}
-              />
-            </Box>
-
-            <Box
-              id="section-provider"
-              ref={providerSectionRef}
-              className={sectionClassName('section-provider')}
-            >
-              <ProviderCard
-                title={t('options.sections.provider')}
-                helper={t('options.provider.helper')}
-                headingIcon={Cpu}
-                headingIconColor="brand"
-                providerLabels={providerLabels}
-                selectedProvider={selectedProvider}
-                noneHint={t('options.provider.noneHint')}
-                moreOptionsLabel={t('options.provider.moreOptions')}
-                onDeviceNoChinese={t('options.provider.onDeviceNoChinese')}
-                canUseOnDevice={canUseOnDevice}
-                onDeviceSupport={onDeviceSupport}
-                openAi={{
-                  apiKeyLabel: t('onboarding.openai.apiKey'),
-                  apiKeyPlaceholder: t('onboarding.openai.apiKeyPlaceholder'),
-                  modelLabel: t('onboarding.openai.model'),
-                  baseUrlLabel: t('onboarding.openai.baseUrl'),
-                  baseUrlPlaceholder: t('onboarding.openai.baseUrlPlaceholder'),
-                  helper: t('onboarding.openai.helper'),
-                  apiKey: openAiConfig.apiKey,
-                  model: openAiConfig.model,
-                  apiBaseUrl: openAiConfig.apiBaseUrl,
-                  onApiKeyChange: handleOpenAiApiKeyChange,
-                  onModelChange: handleOpenAiModelChange,
-                  onApiBaseUrlChange: handleOpenAiApiBaseUrlChange,
-                }}
-                gemini={{
-                  apiKeyLabel: t('onboarding.gemini.apiKey'),
-                  apiKeyPlaceholder: t('onboarding.gemini.apiKeyPlaceholder'),
-                  modelLabel: t('onboarding.gemini.model'),
-                  helper: t('onboarding.gemini.helper'),
-                  apiKey: geminiConfig.apiKey,
-                  model: geminiConfig.model,
-                  onApiKeyChange: handleGeminiApiKeyChange,
-                  onModelChange: handleGeminiModelChange,
-                }}
-                onProviderChange={handleProviderChange}
               />
             </Box>
 
@@ -496,90 +440,81 @@ export default function App() {
               ref={profilesSectionRef}
               className={sectionClassName('section-profiles')}
             >
-              <Stack gap="md">
-                <>
-                  {!providerConfigured && (
-                    <Alert variant="light" color="blue" mb="md">
-                      <Text fz="sm">{t('options.profiles.aiOptional.description')}</Text>
+              <Stack gap="xl">
+                <ProfilesCard
+                  title={t('onboarding.manage.heading')}
+                  countLabel={t('onboarding.manage.count', [profileCountLabel])}
+                  addLabel={t('onboarding.manage.addProfile')}
+                  loadingLabel={t('onboarding.manage.loading')}
+                  emptyLabel={t('onboarding.manage.empty')}
+                  deleteLabel={t('onboarding.manage.delete')}
+                  errorLabel={profilesErrorLabel}
+                  headingIcon={IdCard}
+                  headingIconColor="indigo"
+                  profiles={profilesData}
+                  isLoading={profilesState.loading}
+                  busy={busy}
+                  onCreate={handleCreateProfile}
+                  onSelect={handleSelectProfile}
+                  onDelete={handleDeleteProfile}
+                />
+
+                <CnProfileJsonCard
+                  profile={selectedProfile}
+                  onSaved={(id) => {
+                    void refreshProfiles(id);
+                    handleSelectProfile(id);
+                  }}
+                  t={t}
+                />
+
+                <Stack gap="md">
+                  {selectedProfile ? (
+                    workspaceOpen ? null : (
+                      <Grid gutter="md" align="stretch">
+                        <Grid.Col span={{ base: 12, md: 7, xl: 8 }}>
+                          <ProfileForm {...profileFormProps} />
+                        </Grid.Col>
+                        <Grid.Col span={{ base: 12, md: 5, xl: 4 }}>
+                          <ResumePreviewPane
+                            profileId={selectedProfile.id}
+                            file={selectedProfile.sourceFile}
+                            fileSummary={fileSummary}
+                            rawSummary={rawSummary}
+                            rawText={rawText}
+                            uploadInputId={uploadInputId}
+                            onOpenWorkspace={handleOpenWorkspace}
+                          />
+                        </Grid.Col>
+                      </Grid>
+                    )
+                  ) : (
+                    <Paper withBorder radius="lg" p="lg" shadow="sm">
+                      <Stack gap="sm">
+                        <Text fw={600}>{t('options.profileForm.empty.heading')}</Text>
+                        <Text fz="sm" c="dimmed">
+                          {t('options.profileForm.empty.description')}
+                        </Text>
+                        <Button variant="light" onClick={handleCreateProfile} disabled={busy}>
+                          {t('options.profileForm.empty.create')}
+                        </Button>
+                      </Stack>
+                    </Paper>
+                  )}
+
+                  {validationErrors.length > 0 && (
+                    <Alert variant="light" color="yellow">
+                      <Stack gap="xs">
+                        <Text fw={600}>{t('onboarding.validation.heading')}</Text>
+                        <List spacing={4} size="sm">
+                          {validationErrors.map((item) => (
+                            <List.Item key={item}>{item}</List.Item>
+                          ))}
+                        </List>
+                      </Stack>
                     </Alert>
                   )}
-                  <Stack gap="xl">
-                    <ProfilesCard
-                      title={t('onboarding.manage.heading')}
-                      countLabel={t('onboarding.manage.count', [profileCountLabel])}
-                      addLabel={t('onboarding.manage.addProfile')}
-                      loadingLabel={t('onboarding.manage.loading')}
-                      emptyLabel={t('onboarding.manage.empty')}
-                      deleteLabel={t('onboarding.manage.delete')}
-                      errorLabel={profilesErrorLabel}
-                      headingIcon={IdCard}
-                      headingIconColor="indigo"
-                      profiles={profilesData}
-                      isLoading={profilesState.loading}
-                      busy={busy}
-                      onCreate={handleCreateProfile}
-                      onSelect={handleSelectProfile}
-                      onDelete={handleDeleteProfile}
-                    />
-
-                    <CnProfileJsonCard
-                      profile={selectedProfile}
-                      onSaved={(id) => {
-                        void refreshProfiles(id);
-                        handleSelectProfile(id);
-                      }}
-                      t={t}
-                    />
-
-                    <Stack gap="md">
-                      {selectedProfile ? (
-                        workspaceOpen ? null : (
-                          <Grid gutter="md" align="stretch">
-                            <Grid.Col span={{ base: 12, md: 7, xl: 8 }}>
-                              <ProfileForm {...profileFormProps} />
-                            </Grid.Col>
-                            <Grid.Col span={{ base: 12, md: 5, xl: 4 }}>
-                              <ResumePreviewPane
-                                profileId={selectedProfile.id}
-                                file={selectedProfile.sourceFile}
-                                fileSummary={fileSummary}
-                                rawSummary={rawSummary}
-                                rawText={rawText}
-                                uploadInputId={uploadInputId}
-                                onOpenWorkspace={handleOpenWorkspace}
-                              />
-                            </Grid.Col>
-                          </Grid>
-                        )
-                      ) : (
-                        <Paper withBorder radius="lg" p="lg" shadow="sm">
-                          <Stack gap="sm">
-                            <Text fw={600}>{t('options.profileForm.empty.heading')}</Text>
-                            <Text fz="sm" c="dimmed">
-                              {t('options.profileForm.empty.description')}
-                            </Text>
-                            <Button variant="light" onClick={handleCreateProfile} disabled={busy}>
-                              {t('options.profileForm.empty.create')}
-                            </Button>
-                          </Stack>
-                        </Paper>
-                      )}
-
-                      {validationErrors.length > 0 && (
-                        <Alert variant="light" color="yellow">
-                          <Stack gap="xs">
-                            <Text fw={600}>{t('onboarding.validation.heading')}</Text>
-                            <List spacing={4} size="sm">
-                              {validationErrors.map((item) => (
-                                <List.Item key={item}>{item}</List.Item>
-                              ))}
-                            </List>
-                          </Stack>
-                        </Alert>
-                      )}
-                    </Stack>
-                  </Stack>
-                </>
+                </Stack>
               </Stack>
             </Box>
 
@@ -687,13 +622,36 @@ export default function App() {
         ruleHint={t('options.profileForm.upload.ruleHint')}
         parseLabel={t('options.profileForm.upload.parseAction')}
         parseHint={t('options.profileForm.upload.parseHint')}
-        parseUnavailableHint={t('options.profileForm.upload.parseUnavailableHint')}
-        aiAvailable={providerConfigured}
+        parseSetupHint={t('options.profileForm.upload.parseSetupHint')}
+        aiConfigured={aiConfigured}
         storeLabel={t('options.profileForm.upload.storeAction')}
         busy={busy}
         onRule={() => handleFileAction('rule')}
-        onParse={() => handleFileAction('parse')}
+        onParse={handleAiParseRequest}
         onStore={() => handleFileAction('store')}
+      />
+
+      <AiParseSettingsModal
+        opened={aiSetupOpen}
+        onClose={handleAiSetupClose}
+        onSaved={handleAiSetupSaved}
+        title={t('options.aiParse.title')}
+        description={t('options.aiParse.description')}
+        apiKeyLabel={t('options.aiParse.apiKey')}
+        apiKeyPlaceholder={t('options.aiParse.apiKeyPlaceholder')}
+        modelLabel={t('options.aiParse.model')}
+        modelHint={t('options.aiParse.modelHint')}
+        advancedLabel={t('options.aiParse.advanced')}
+        baseUrlLabel={t('options.aiParse.baseUrl')}
+        baseUrlPlaceholder={t('options.aiParse.baseUrlPlaceholder')}
+        privacyNote={t('options.aiParse.privacyNote')}
+        saveLabel={t('options.aiParse.save')}
+        apiKey={deepSeekConfig.apiKey}
+        model={deepSeekConfig.model}
+        apiBaseUrl={deepSeekConfig.apiBaseUrl}
+        onApiKeyChange={handleDeepSeekApiKeyChange}
+        onModelChange={handleDeepSeekModelChange}
+        onApiBaseUrlChange={handleDeepSeekApiBaseUrlChange}
       />
 
       <ParseAgainModal
@@ -705,15 +663,6 @@ export default function App() {
         confirmLabel={translate('options.profileForm.upload.parseAgainConfirmConfirm')}
         busy={busy}
         onConfirm={handleParseAgain}
-      />
-
-      <CopyHelperAffix
-        visible={showCopyHelper}
-        rawText={rawText}
-        heading={t('options.profileForm.copyHelper.heading')}
-        description={t('options.profileForm.copyHelper.description')}
-        copyLabel={t('options.profileForm.copyHelper.copy')}
-        copiedLabel={t('options.profileForm.copyHelper.copied')}
       />
 
       <Modal

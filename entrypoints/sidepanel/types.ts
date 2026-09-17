@@ -11,8 +11,7 @@ export interface FieldEntry {
   manualValue: string;
   status: FieldStatus;
   reason?: string;
-  slotSource: 'heuristic' | 'model' | 'custom' | 'unset';
-  slotNote?: string;
+  slotSource: 'heuristic' | 'custom' | 'unset';
   autoKey?: string;
   autoKeyLabel?: string;
   autoNote?: string;

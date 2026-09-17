@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "字段簿 CnProfile v1",
+  "description": "国内校招扁平档案。这是 AI 简历解析的目标形状——模型直接吐出这个结构，落库前用本 schema 校验，省掉有损的 JSON Resume 中间转换。字段名与 shared/schema/cnProfile.ts 的 CnProfileData 一一对应，由 tests/shared/schema/cnProfileSchema.test.ts 的探针双向守卫。",
+  "type": "object",
+  "definitions": {
+    "looseDate": {
+      "type": "string",
+      "description": "统一成 YYYY-MM 或 YYYY-MM-DD（知道具体日期才带日）。不做正则约束：简历里的日期写法五花八门（2023.09 / 2023年9月），强行约束只会让模型在校验失败上浪费重试。"
+    }
+  },
+  "properties": {
+    "basic": {
+      "type": "object",
+      "description": "基本信息",
+      "properties": {
+        "name": { "type": "string", "description": "姓名" },
+        "gender": { "type": "string", "description": "性别，取值见提示词里的枚举" },
+        "birthDate": { "$ref": "#/definitions/looseDate", "description": "出生日期" },
+        "nation": { "type": "string", "description": "民族，如 汉族" },
+        "politicalStatus": { "type": "string", "description": "政治面貌，取值见提示词里的枚举" },
+        "idCard": { "type": "string", "description": "身份证号" },
+        "phone": { "type": "string", "description": "手机号" },
+        "email": { "type": "string", "description": "邮箱" },
+        "wechat": { "type": "string", "description": "微信号" },
+        "qq": { "type": "string", "description": "QQ 号" },
+        "city": { "type": "string", "description": "现居城市" },
+        "address": { "type": "string", "description": "通讯地址" },
+        "hometown": { "type": "string", "description": "籍贯，如 山东济南" },
+        "emergencyContact": { "type": "string", "description": "紧急联系人姓名" },
+        "emergencyPhone": { "type": "string", "description": "紧急联系人电话" },
+        "englishLevel": { "type": "string", "description": "英语水平，如 CET-6 / 雅思 7.0 / 专八" }
+      },
+      "additionalProperties": false
+    },
+    "education": {
+      "type": "object",
+      "description": "教育经历（校招场景只保留最高一段）",
+      "properties": {
+        "school": { "type": "string", "description": "学校全称" },
+        "degree": { "type": "string", "description": "学历，取值见提示词里的枚举" },
+        "major": { "type": "string", "description": "专业" },
+        "enrollmentDate": { "$ref": "#/definitions/looseDate", "description": "入学时间" },
+        "graduationDate": { "$ref": "#/definitions/looseDate", "description": "毕业时间" },
+        "gpa": { "type": "string", "description": "GPA 或平均分，如 3.8/4.0 或 88/100" },
+        "ranking": { "type": "string", "description": "专业排名，如 5/120 或 前 10%" },
+        "fullTime": { "type": "string", "description": "培养方式，取值见提示词里的枚举" }
+      },
+      "additionalProperties": false
+    },
+    "intention": {
+      "type": "object",
+      "description": "求职意向",
+      "properties": {
+        "position": { "type": "string", "description": "应聘/目标岗位" },
+        "expectedCity": { "type": "string", "description": "期望工作城市" },
+        "expectedSalary": { "type": "string", "description": "期望薪资，如 25k-35k" },
+        "availability": { "type": "string", "description": "到岗时间，如 一周内 / 2026-07" },
+        "internshipDuration": { "type": "string", "description": "可实习时长，如 6个月" },
+        "jobType": { "type": "string", "description": "工作性质，取值见提示词里的枚举" }
+      },
+      "additionalProperties": false
+    },
+    "links": {
+      "type": "object",
+      "description": "链接",
+      "properties": {
+        "github": { "type": "string", "description": "GitHub 主页" },
+        "blog": { "type": "string", "description": "个人博客 / 主页" },
+        "portfolio": { "type": "string", "description": "作品集" },
+        "linkedin": { "type": "string", "description": "LinkedIn" }
+      },
+      "additionalProperties": false
+    },
+    "texts": {
+      "type": "object",
+      "description": "整段文本。多个条目之间用空行（\\n\\n）分隔，条目内部用换行保留原有层次。",
+      "properties": {
+        "selfIntro": { "type": "string", "description": "自我介绍 / 个人评价" },
+        "projectExp": { "type": "string", "description": "项目经历，多段用空行分隔" },
+        "internshipExp": { "type": "string", "description": "实习经历，多段用空行分隔" },
+        "campusExp": { "type": "string", "description": "校园经历 / 学生工作，多段用空行分隔" },
+        "awards": { "type": "string", "description": "获奖情况，多段用空行分隔" },
+        "skills": { "type": "string", "description": "专业技能" },
+        "researchDirection": { "type": "string", "description": "研究方向 / 论文情况" },
+        "hobbies": { "type": "string", "description": "兴趣爱好 / 特长" }
+      },
+      "additionalProperties": false
+    },
+    "attachments": {
+      "type": "object",
+      "description": "附件引用。AI 解析绝不填这里——resumeId 指向本地简历库条目，只能由程序写入。",
+      "properties": {
+        "resumeId": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "custom": {
+      "type": "object",
+      "description": "兜底问答：页面上出现、但上面六组都没有对应字段的问题。键用简历里的原始问题措辞，值用简历里的答案。",
+      "additionalProperties": { "type": "string" }
+    }
+  },
+  "additionalProperties": false
+}

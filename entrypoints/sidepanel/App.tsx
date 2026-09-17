@@ -16,17 +16,14 @@ import {
   TextInput,
   Tooltip,
 } from '@mantine/core';
-import { Eraser, RefreshCcw, Sparkles, Users, Wand2 } from 'lucide-react';
+import { Eraser, RefreshCcw, Sparkles, Users } from 'lucide-react';
 import { notifications } from '@mantine/notifications';
 import { browser } from 'wxt/browser';
 import { listProfiles } from '../../shared/storage/profiles';
-import type { AppSettings, ProfileRecord, ProviderConfig, StoredFileReference } from '../../shared/types';
-import { toLabeledRecord } from '../../shared/schema/cnProfile';
+import type { AppSettings, ProfileRecord, StoredFileReference } from '../../shared/types';
 import type {
   FillFilePayload,
   FillResultMessage,
-  PromptAiRequestInput,
-  PromptAiRequestOptions,
   PromptOption,
   PromptOptionSlot,
   ScannedField,
@@ -42,15 +39,7 @@ import { getAllAdapterIds } from '../../shared/apply/slots';
 import { hydrateDictionary, subscribeDictionary } from '../../shared/dictionary/store';
 import { resolveFieldSlot } from '../../shared/apply/fieldMapping';
 import { buildSlotValues, buildCustomAnswers, type SlotValueMap } from '../../shared/apply/profile';
-import { classifyFieldDescriptors, type FieldDescriptor } from './classifySlots';
-import { getSettings, isAiEnabled } from '../../shared/storage/settings';
-import {
-  NoProviderConfiguredError,
-  ProviderAvailabilityError,
-  ProviderConfigurationError,
-  ProviderInvocationError,
-} from '../../shared/llm/errors';
-import { requestGuidedSuggestion } from '../../shared/llm/guidedSuggestion';
+import { getSettings } from '../../shared/storage/settings';
 import { PromptEditor } from '../shared/components/PromptEditor';
 import { FieldReviewMode } from './components/FieldReviewMode';
 import { ManualCopyMode } from './components/ManualCopyMode';
@@ -73,10 +62,6 @@ export default function App() {
   const [scanRequestId, setScanRequestId] = useState<string | null>(null);
   const [viewState, setViewState] = useState<ViewState>({ loadingProfiles: true });
   const [scanning, setScanning] = useState(false);
-  const [classifying, setClassifying] = useState(false);
-  // Whether the user opted into AI at all. Drives the AI-only affordances so a
-  // default install (provider: 'none') never shows a control that cannot work.
-  const [aiEnabled, setAiEnabled] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
   // 字段字典的修订号：字典热更（storage 里的 dictionary:v1 变动）时 +1，
   // 用来让依赖「可用适配器列表」的 memo 重新求值。匹配本身读的是 store 的
@@ -93,11 +78,9 @@ export default function App() {
   const customAnswersRef = useRef<Record<string, string>>({});
   const fillModeRef = useRef<AppSettings['fillMode']>('emptyOnly');
   const scanRequestIdRef = useRef<string | null>(null);
-  const descriptorsRef = useRef<FieldDescriptor[]>([]);
   const adapterIdsRef = useRef<string[]>(defaultAdapterIds);
   const fillResolversRef = useRef<Map<string, (result: FillResultMessage) => void>>(new Map());
   const fieldsRef = useRef<FieldEntry[]>([]);
-  const providerRef = useRef<ProviderConfig | null>(null);
   const selectedFieldRef = useRef<string | null>(null);
   const lastFocusedFieldRef = useRef<string | null>(null);
   const nextFocusScrollRef = useRef(true);
@@ -236,8 +219,6 @@ export default function App() {
       try {
         const settings = await getSettings();
         if (cancelled) return;
-        providerRef.current = settings.provider;
-        setAiEnabled(isAiEnabled(settings.provider));
         setActiveAdapterIds(settings.adapters.length > 0 ? settings.adapters : defaultAdapterIds);
         fillModeRef.current = settings.fillMode;
       } catch (error) {
@@ -266,7 +247,6 @@ export default function App() {
     if (!permissionGranted) {
       setFields([]);
       fieldsRef.current = [];
-      descriptorsRef.current = [];
       setSelectedFieldId(null);
       selectedFieldRef.current = null;
       setScanRequestId(null);
@@ -349,14 +329,6 @@ export default function App() {
         })().catch(console.error);
 
         setScanning(false);
-        const descriptors: FieldDescriptor[] = parsed.fields.map((field) => ({
-          id: field.id,
-          label: field.label,
-          type: field.kind,
-          autocomplete: field.autocomplete ?? null,
-          required: field.required,
-        }));
-        descriptorsRef.current = descriptors;
         return;
       }
 
@@ -859,69 +831,6 @@ export default function App() {
     showPromptOverlay(entry, { scrollIntoView: origin !== 'focus' });
   }
 
-  const classifyAndApply = useCallback(async (descriptors: FieldDescriptor[]): Promise<boolean> => {
-    if (descriptors.length === 0) {
-      return false;
-    }
-    try {
-      const map = await classifyFieldDescriptors(providerRef.current, descriptors);
-      if (map.size === 0) {
-        return false;
-      }
-      setFields((current) =>
-        current.map((entry) => {
-          const match = map.get(entry.field.id);
-          if (!match?.slot) {
-            return entry;
-          }
-          const suggestion = slotValuesRef.current[match.slot] ?? entry.suggestion;
-          const shouldUpdateSelection = entry.selectedSlot === entry.slot || entry.selectedSlot === null;
-          return {
-            ...entry,
-            slot: match.slot,
-            suggestion,
-            manualValue: deriveManualValue(entry, suggestion),
-            slotSource: 'model',
-            slotNote: match.reason,
-            selectedSlot: suggestion && shouldUpdateSelection ? match.slot : entry.selectedSlot,
-          };
-        }),
-      );
-      return true;
-    } catch (error) {
-      if (
-        error instanceof NoProviderConfiguredError ||
-        error instanceof ProviderConfigurationError ||
-        error instanceof ProviderAvailabilityError ||
-        error instanceof ProviderInvocationError
-      ) {
-        notify(error.message, 'error');
-        return false;
-      }
-      console.warn('Field classification failed', error);
-      return false;
-    }
-  }, [notify]);
-
-  const handleClassify = useCallback(async () => {
-    if (classifying) {
-      return;
-    }
-    const descriptors = descriptorsRef.current;
-    if (descriptors.length === 0) {
-      return;
-    }
-    setClassifying(true);
-    try {
-      const updated = await classifyAndApply(descriptors);
-      if (updated) {
-        notify(t('sidepanel.feedback.classificationUpdated'), 'success');
-      }
-    } finally {
-      setClassifying(false);
-    }
-  }, [classifying, classifyAndApply, notify, t]);
-
   const openProfilesPage = () => {
     browser.tabs
       .create({ url: browser.runtime.getURL('/options.html') })
@@ -959,18 +868,12 @@ export default function App() {
         entry.status === 'filled',
     );
 
-  // Classifying sends every unmatched field to a model, so it needs AI on top
-  // of a scan. Everything else in the toolbar runs on local rules only.
-  const classifyDisabled = classifying || fields.length === 0 || !aiEnabled;
-
   const renderDomToolbar = () => {
     const iconSize = 18;
     const baseDisabled = viewState.loadingProfiles || !selectedProfile || !permissionGranted;
     const statusBadge = scanning
       ? { color: 'brand' as const, label: t('sidepanel.toolbar.scanning') }
-      : classifying
-        ? { color: 'violet' as const, label: t('sidepanel.toolbar.classifying') }
-        : null;
+      : null;
 
     const renderIconButton = (
       label: string,
@@ -1007,20 +910,6 @@ export default function App() {
             variant: scanning ? 'filled' : 'light',
             icon: <RefreshCcw size={iconSize} />,
           })}
-          {renderIconButton(
-            !aiEnabled
-              ? t('sidepanel.toolbar.classifyNeedsAi')
-              : classifying
-                ? t('sidepanel.toolbar.classifying')
-                : t('sidepanel.toolbar.classify'),
-            {
-              onClick: handleClassify,
-              disabled: classifyDisabled,
-              color: 'violet',
-              variant: classifying ? 'filled' : 'light',
-              icon: <Wand2 size={iconSize} />,
-            },
-          )}
           {renderIconButton(t('sidepanel.toolbar.fillMapped'), {
             onClick: handleAutoFill,
             disabled: fillDisabled,
@@ -1166,10 +1055,7 @@ export default function App() {
       : entry.slotSource === 'custom'
         ? t('sidepanel.field.customAnswer')
         : t('sidepanel.field.unmapped');
-    const slotLabel =
-      entry.slot && entry.slotSource === 'model'
-        ? `${baseSlotLabel}${t('sidepanel.field.aiSuffix')}`
-        : baseSlotLabel;
+    const slotLabel = baseSlotLabel;
     const summary = (() => {
       if (entry.field.kind === 'file') {
         return t('sidepanel.field.fileSummary');
@@ -1178,11 +1064,9 @@ export default function App() {
         return t('sidepanel.field.selectedValue', [truncate(selectedOption.value)]);
       }
       if (value) {
-        return entry.slotSource === 'model'
-          ? t('sidepanel.field.suggestedAI', [truncate(value)])
-          : entry.slotSource === 'custom'
-            ? t('sidepanel.field.suggestedCustom', [truncate(value)])
-            : t('sidepanel.field.suggestedProfile', [truncate(value)]);
+        return entry.slotSource === 'custom'
+          ? t('sidepanel.field.suggestedCustom', [truncate(value)])
+          : t('sidepanel.field.suggestedProfile', [truncate(value)]);
       }
       return manualOptions.length > 0 ? t('sidepanel.field.chooseValue') : t('sidepanel.field.noValues');
     })();
@@ -1258,11 +1142,6 @@ export default function App() {
               </Badge>
             )}
           </Group>
-          {entry.slotNote && (
-            <Text fz="xs" c="dimmed">
-              {t('sidepanel.field.aiNote', [entry.slotNote])}
-            </Text>
-          )}
           {entry.reason && (
             <Text fz="xs" c="dimmed">
               {formatFillReason(entry.reason)}
@@ -1341,33 +1220,6 @@ export default function App() {
       : 'sidepanel.guided.manualInputPlaceholder';
     const defaultSlot = fallbackOption ? (fallbackOption.slot as PromptOptionSlot | null) : undefined;
 
-    const requestAi = async (
-      input: PromptAiRequestInput,
-      options?: PromptAiRequestOptions,
-    ) => {
-      const provider = providerRef.current;
-      if (!provider) {
-        throw new NoProviderConfiguredError();
-      }
-      return await requestGuidedSuggestion({
-        provider,
-        query: input.query,
-        field: {
-          label: selectedEntry.field.label,
-          kind: selectedEntry.field.kind,
-          context: selectedEntry.field.context,
-          autocomplete: selectedEntry.field.autocomplete ?? null,
-          required: selectedEntry.field.required,
-        },
-        slot: input.selectedSlot ?? currentSlot ?? selectedEntry.slot ?? null,
-        currentValue: input.currentValue ?? manualValue ?? '',
-        suggestion: input.suggestion ?? selectedEntry.suggestion ?? '',
-        matches: input.matches,
-        profile: selectedProfile ? toLabeledRecord(selectedProfile) : null,
-        signal: options?.signal,
-      });
-    };
-
     return (
       <Stack gap="sm">
         <Stack gap={4}>
@@ -1388,121 +1240,35 @@ export default function App() {
           selectedSlot={currentSlot ?? null}
           onValueChange={(next) => handleManualValueChange(selectedEntry.field.id, next)}
           onSlotChange={(slot) => handleSlotSelectionChange(selectedEntry.field.id, slot)}
-          onRequestAi={requestAi}
         >
-          {(editor) => {
-            const handleAiClick = async () => {
-              try {
-                const result = await editor.requestAi();
-                if (!result) {
-                  const message = tLoose('sidepanel.guided.aiPromptError');
-                  notify(message, 'error');
-                  editor.setAiError(message);
-                  return;
-                }
-                const normalized = result.value?.trim?.() ?? '';
-                if (!normalized) {
-                  const message = tLoose('sidepanel.guided.aiPromptEmpty');
-                  notify(message, 'error');
-                  editor.setAiError(message);
-                  return;
-                }
-                editor.setValue(normalized);
-                if (Object.prototype.hasOwnProperty.call(result, 'slot')) {
-                  editor.setSelectedSlot(result.slot ?? null);
-                }
-                editor.setAiError(null);
-                notify(tLoose('sidepanel.guided.aiPromptApplied'), 'success');
-              } catch (error) {
-                if (
-                  (typeof DOMException !== 'undefined' && error instanceof DOMException && error.name === 'AbortError') ||
-                  (error instanceof Error && error.name === 'AbortError')
-                ) {
-                  return;
-                }
-                if (
-                  error instanceof NoProviderConfiguredError ||
-                  error instanceof ProviderConfigurationError ||
-                  error instanceof ProviderAvailabilityError ||
-                  error instanceof ProviderInvocationError
-                ) {
-                  notify(error.message, 'error');
-                  editor.setAiError(error.message);
-                } else if (error instanceof Error) {
-                  const message =
-                    error.message === 'AI returned an empty response.' || error.message === 'query-missing'
-                      ? tLoose('sidepanel.guided.aiPromptEmpty')
-                      : tLoose('sidepanel.guided.aiPromptError');
-                  notify(message, 'error');
-                  editor.setAiError(message);
-                } else {
-                  const message = tLoose('sidepanel.guided.aiPromptError');
-                  notify(message, 'error');
-                  editor.setAiError(message);
-                }
-              } finally {
-                editor.reset();
-              }
-            };
-
-            return (
-              <>
-                <Select
-                  label={t('sidepanel.field.selectorLabel')}
-                  placeholder={t('sidepanel.field.selectPlaceholder')}
-                  data={editor.options.map((option) => ({
-                    value: option.slot,
-                    label: `${option.label} · ${truncate(option.value)}`,
-                  }))}
-                  value={editor.selectedSlot ?? null}
-                  onChange={(slot) => editor.setSelectedSlot(slot ? (slot as PromptOptionSlot) : null)}
-                  size="sm"
-                  clearable
-                  searchable={editor.options.length > 7}
-                  comboboxProps={{ withinPortal: true }}
-                />
-                <Stack gap="sm">
-                  <Textarea
-                    label={t('sidepanel.guided.manualInputLabel')}
-                    placeholder={t(placeholderKey)}
-                    autosize
-                    minRows={2}
-                    maxRows={6}
-                    value={editor.value}
-                    onChange={(event) => editor.setValue(event.currentTarget.value)}
-                    description={t('sidepanel.guided.manualInputHint')}
-                  />
-                  <Textarea
-                    label={tLoose('sidepanel.guided.aiPromptLabel')}
-                    placeholder={tLoose('sidepanel.guided.aiPromptPlaceholder')}
-                    autosize
-                    minRows={1}
-                    maxRows={3}
-                    value={editor.instruction}
-                    onChange={(event) => editor.setInstruction(event.currentTarget.value)}
-                    description={tLoose('sidepanel.guided.aiPromptHint')}
-                  />
-                  {editor.aiError ? (
-                    <Text fz="xs" c="red">
-                      {editor.aiError}
-                    </Text>
-                  ) : null}
-                  <Group justify="flex-end">
-                    <Button
-                      size="sm"
-                      variant="light"
-                      leftSection={<Sparkles size={16} />}
-                      loading={editor.aiLoading}
-                      disabled={editor.aiLoading || editor.instruction.trim().length === 0}
-                      onClick={handleAiClick}
-                    >
-                      {tLoose('sidepanel.guided.aiPromptAction')}
-                    </Button>
-                  </Group>
-                </Stack>
-              </>
-            );
-          }}
+          {(editor) => (
+            <>
+              <Select
+                label={t('sidepanel.field.selectorLabel')}
+                placeholder={t('sidepanel.field.selectPlaceholder')}
+                data={editor.options.map((option) => ({
+                  value: option.slot,
+                  label: `${option.label} · ${truncate(option.value)}`,
+                }))}
+                value={editor.selectedSlot ?? null}
+                onChange={(slot) => editor.setSelectedSlot(slot ? (slot as PromptOptionSlot) : null)}
+                size="sm"
+                clearable
+                searchable={editor.options.length > 7}
+                comboboxProps={{ withinPortal: true }}
+              />
+              <Textarea
+                label={t('sidepanel.guided.manualInputLabel')}
+                placeholder={t(placeholderKey)}
+                autosize
+                minRows={2}
+                maxRows={6}
+                value={editor.value}
+                onChange={(event) => editor.setValue(event.currentTarget.value)}
+                description={t('sidepanel.guided.manualInputHint')}
+              />
+            </>
+          )}
         </PromptEditor>
         <Group justify="flex-end">
           <Button size="sm" disabled={fillDisabled} onClick={() => handleReview(selectedEntry)}>
@@ -1537,7 +1303,6 @@ function buildFieldEntries(
       status: 'idle',
       reason: undefined,
       slotSource: slot ? 'heuristic' : customSuggestion ? 'custom' : 'unset',
-      slotNote: undefined,
       autoKey: undefined,
       autoKeyLabel: undefined,
       autoNote: undefined,

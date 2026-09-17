@@ -1,50 +1,37 @@
 import type { CnProfile } from './schema/cnProfile';
 
-export type ProviderKind = 'none' | 'on-device' | 'openai' | 'gemini';
-
 /**
- * 「不使用 AI」是默认档：字段匹配与填值全部由本地字段字典完成，不需要任何模型。
- * 需要 AI 的能力（识别未命中字段、生成开放题文案、PDF 智能解析）在选中它时
- * 要么隐藏、要么提示用户去开一个 provider。
+ * 目前只有两档：
+ *
+ * - `none`（默认）：完全不联网。字段匹配与填值由本地字段字典完成，导入走规则解析。
+ * - `deepseek`：**只用于导入简历时的 AI 解析**——把 PDF 文本转成 CnProfile JSON。
+ *
+ * AI 在填表链路里没有位置（那是字段字典的职责），所以这里不存在「填表时用哪个
+ * 模型」这种概念。后续接别的厂商时，在 `shared/llm/openaiCompatible.ts` 加一个
+ * preset 并在此处扩一个字面量即可——它们都兼容 OpenAI 协议。
  */
+export type ProviderKind = 'none' | 'deepseek';
+
 export interface NoneProviderConfig {
   kind: 'none';
 }
 
-export interface OnDeviceProviderConfig {
-  kind: 'on-device';
-}
-
-export interface OpenAIProviderConfig {
-  kind: 'openai';
+export interface DeepSeekProviderConfig {
+  kind: 'deepseek';
   apiKey: string;
   model: string;
   apiBaseUrl: string;
 }
 
-export interface GeminiProviderConfig {
-  kind: 'gemini';
-  apiKey: string;
-  model: string;
-}
+export type ProviderConfig = NoneProviderConfig | DeepSeekProviderConfig;
 
-export type ProviderConfig =
-  | NoneProviderConfig
-  | OnDeviceProviderConfig
-  | OpenAIProviderConfig
-  | GeminiProviderConfig;
-
+/** 解析当时的 provider 快照，只记型号不记密钥。 */
 export type ProviderSnapshot =
   | NoneProviderConfig
-  | OnDeviceProviderConfig
   | {
-      kind: 'openai';
+      kind: 'deepseek';
       model: string;
       apiBaseUrl: string;
-    }
-  | {
-      kind: 'gemini';
-      model: string;
     };
 
 export interface StoredFileReference {

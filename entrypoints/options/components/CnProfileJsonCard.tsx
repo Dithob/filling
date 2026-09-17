@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Alert, Button, Card, Group, Stack, Text } from '@mantine/core';
-import { Download, Upload } from 'lucide-react';
+import { FileInput, FileOutput } from 'lucide-react';
 import { saveProfile } from '../../../shared/storage/profiles';
 import {
   createEmptyProfile,
@@ -17,6 +17,11 @@ interface CnProfileJsonCardProps {
 /**
  * 用一份 profile.json 维护所有常用信息：导出、导入、覆盖当前方案。
  * 这是「一个文件维护常用信息」的落地入口，不依赖任何 AI 解析。
+ *
+ * 图标刻意避开 Download / Upload 这对上下箭头：它们的语义在中文语境里是反的
+ * （「导出到本地」直觉是下载、「从本地导入」直觉是上传，与数据流出方向相反），
+ * 曾因此被读反过。FileOutput / FileInput 是「文件出去 / 文件进来」的语义，
+ * 不依赖方向直觉，而且与「导**出** / 导**入**」字面对应。
  */
 export function CnProfileJsonCard({ profile, onSaved, t }: CnProfileJsonCardProps) {
   const [error, setError] = useState<string | null>(null);
@@ -102,14 +107,14 @@ export function CnProfileJsonCard({ profile, onSaved, t }: CnProfileJsonCardProp
         <Group gap="sm">
           <Button
             variant="light"
-            leftSection={<Download size={16} />}
+            leftSection={<FileOutput size={16} />}
             onClick={handleExport}
             disabled={!profile}
           >
             {t('options.cnProfileJson.export')}
           </Button>
           <Button
-            leftSection={<Upload size={16} />}
+            leftSection={<FileInput size={16} />}
             loading={busy}
             onClick={() => fileInputRef.current?.click()}
           >

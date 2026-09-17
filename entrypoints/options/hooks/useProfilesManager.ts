@@ -1,37 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { notifications } from '@mantine/notifications';
 import type { UseFormReturn } from 'react-hook-form';
-import { buildResumePrompt } from '../../../shared/llm/prompt';
-import { invokeWithProvider } from '../../../shared/llm/runtime';
-import {
-  NoProviderConfiguredError,
-  ProviderAvailabilityError,
-  ProviderConfigurationError,
-  ProviderInvocationError,
-} from '../../../shared/llm/errors';
+import { createDeepSeekProvider, isAiConfigured } from '../../../shared/storage/settings';
+import { ResumeParseError, parseResumeWithAi } from '../../../shared/llm/resumeParse';
+import { ProviderConfigurationError, ProviderInvocationError } from '../../../shared/llm/errors';
 import { extractTextFromPdf } from '../../../shared/pdf/extractText';
 import { extractResumeFromText } from '../../../shared/pdf/ruleExtract';
 import { deleteProfile, listProfiles, saveProfile, storeFile } from '../../../shared/storage/profiles';
 import { getActiveProfileId, setActiveProfileId } from '../../../shared/storage/activeProfile';
 import {
-  createGeminiProvider,
-  createOnDeviceProvider,
-  createOpenAIProvider,
-} from '../../../shared/storage/settings';
-import {
   cnProfileFieldsFromResume,
   mergeCnProfileData,
   resumeFromCnProfile,
 } from '../../../shared/schema/cnProfileBridge';
-import { createEmptyProfile } from '../../../shared/schema/cnProfile';
-import resumeSchema from '../../../shared/schema/jsonresume-v1.llm.json';
+import { createEmptyProfile, type CnProfileData } from '../../../shared/schema/cnProfile';
 import { validateResume } from '../../../shared/validate';
-import type {
-  ProviderConfig,
-  ProviderSnapshot,
-  ProfileRecord,
-  ResumeExtractionResult,
-} from '../../../shared/types';
+import type { ProviderSnapshot, ProfileRecord } from '../../../shared/types';
 import {
   createEmptyResumeFormValues,
   formValuesToResume,
@@ -40,8 +24,7 @@ import {
   type ResumeFormValues,
 } from '../components/ProfileForm';
 import type { ProfilesCardProfile } from '../components/ProfilesCard';
-import type { LanguageModelAvailability } from '../../../shared/llm/chromePrompt';
-import type { GeminiConfigState, OpenAiConfigState, ProviderKind } from './useProviderSettings';
+import type { DeepSeekConfigState } from './useSettings';
 import {
   formatProfileParsing,
   formatProfileSummary,
@@ -55,7 +38,7 @@ export interface StatusState {
   message: string;
 }
 
-/** 导入 PDF 的三种处理方式：AI 解析 / 规则抽取（零 AI）/ 仅存文件。 */
+/** 导入 PDF 的三种处理方式：规则解析（零 AI）/ AI 解析 / 仅存文件。 */
 export type FileImportMode = 'parse' | 'rule' | 'store';
 
 type BusyAction = 'upload' | 'parse' | 'save' | null;
@@ -67,12 +50,9 @@ interface ProfilesState {
 
 interface UseProfilesManagerParams {
   form: UseFormReturn<ResumeFormValues>;
-  selectedProvider: ProviderKind;
-  openAiConfig: OpenAiConfigState;
-  geminiConfig: GeminiConfigState;
-  availability: LanguageModelAvailability;
+  /** 只在「AI 解析」这一条路径上用到。填表链路从不读它。 */
+  deepSeekConfig: DeepSeekConfigState;
   t: (key: string, substitutions?: unknown) => string;
-  translate: (key: string, substitutions?: unknown) => string;
 }
 
 interface UseProfilesManagerResult {
@@ -93,7 +73,6 @@ interface UseProfilesManagerResult {
   rawSummary: string | null;
   formSaving: boolean;
   canParseAgain: boolean;
-  showCopyHelper: boolean;
   profilesErrorLabel?: string;
   handleSaveForm: (values: ResumeFormValues) => Promise<void>;
   handleResetForm: () => void;
@@ -110,12 +89,8 @@ interface UseProfilesManagerResult {
 
 export function useProfilesManager({
   form,
-  selectedProvider,
-  openAiConfig,
-  geminiConfig,
-  availability,
+  deepSeekConfig,
   t,
-  translate,
 }: UseProfilesManagerParams): UseProfilesManagerResult {
   const [profiles, setProfiles] = useState<ProfileRecord[]>([]);
   const [profilesState, setProfilesState] = useState<ProfilesState>({ loading: true });
@@ -220,6 +195,55 @@ export function useProfilesManager({
     setPendingFile(null);
   }, []);
 
+  /**
+   * 「规则解析 / AI 解析」共用的落库收尾。
+   *
+   * 两条路径的差别只在**怎么得到数据**：规则路径产出 JSON Resume 再经 bridge
+   * 转成扁平档案（有损，但正则本来也只能抽到表层字段）；AI 路径直接产出扁平
+   * 档案，因此绕过 bridge，中文专有字段（民族/政治面貌/身份证/籍贯/紧急联系人/
+   * 英语水平/排名/培养方式/实习时长/研究方向）能被无损写入。
+   */
+  const applyParsedData = useCallback(
+    async (params: {
+      profile: ProfileRecord;
+      text: string;
+      fileRef: ProfileRecord['sourceFile'];
+      formValues: ResumeFormValues;
+      patch: Partial<CnProfileData>;
+      /** 规则抽取不改写 provider，所以这里可能是 undefined。 */
+      provider: ProviderSnapshot | undefined;
+      parsedAt: string;
+    }) => {
+      const { profile, text, fileRef, formValues, patch, provider, parsedAt } = params;
+      const mergedValues = mergeResumeFormValues(form.getValues(), formValues);
+      form.reset(mergedValues);
+
+      const mergedResume = formValuesToResume(mergedValues);
+      const validationResult = validateResume(mergedResume);
+
+      const updated: ProfileRecord = {
+        ...profile,
+        // merge 而不是整组覆盖：bridge 对「表单不拥有的字段」只能吐 undefined，
+        // 直接展开会把民族 / 政治面貌 / 身份证号 等清空。
+        ...mergeCnProfileData(profile, patch),
+        sourceFile: fileRef,
+        rawText: text,
+        provider,
+        parsedAt,
+        validation: {
+          valid: validationResult.valid,
+          errors: validationResult.errors,
+        },
+      };
+
+      await saveProfile(updated);
+      await refreshProfiles(updated.id);
+      setRawText(text);
+      return updated;
+    },
+    [form, refreshProfiles],
+  );
+
   const processFile = useCallback(
     async (file: File, mode: FileImportMode) => {
       if (!selectedProfile) {
@@ -238,165 +262,102 @@ export function useProfilesManager({
         }
 
         const fileRef = await storeFile(selectedProfile.id, file);
-
-        let resumeResult = resumeFromCnProfile(selectedProfile);
-        let providerSnapshot = selectedProfile.provider;
-        let parsedAt = selectedProfile.parsedAt;
-        let validation = selectedProfile.validation;
         const parseRequested = mode === 'parse';
         const ruleRequested = mode === 'rule';
-        const autoRequested = parseRequested || ruleRequested;
-        let parseSucceeded = false;
-        let parseErrorMessage: string | null = null;
-        let parseErrorDetails: string | null = null;
 
         if (ruleRequested) {
           // 零 AI 路径：纯正则 + 章节切分，随时可用，不依赖任何模型。
           setStatus({ phase: 'parsing', message: t('options.profileForm.status.ruleExtracting') });
           try {
             const outcome = extractResumeFromText(text);
-            const formValues = resumeToFormValues(outcome.resume);
-            const mergedValues = mergeResumeFormValues(form.getValues(), formValues);
-            form.reset(mergedValues);
-
-            const mergedResume = formValuesToResume(mergedValues);
-            const validationResult = validateResume(mergedResume);
-
-            resumeResult = mergedResume;
-            // 规则抽取不改写 provider：它不是 AI 产物，保持用户原有配置不变。
-            parsedAt = new Date().toISOString();
-            validation = {
-              valid: validationResult.valid,
-              errors: validationResult.errors,
-            };
-            parseSucceeded = true;
-            setStatus({ phase: 'saving', message: t('options.profileForm.status.savingRule') });
+            const parsedResume = outcome.resume;
+            await applyParsedData({
+              profile: selectedProfile,
+              text,
+              fileRef,
+              formValues: resumeToFormValues(parsedResume),
+              patch: cnProfileFieldsFromResume(parsedResume),
+              // 规则抽取不改写 provider：它不是 AI 产物，保持用户原有配置不变。
+              provider: selectedProfile.provider,
+              parsedAt: new Date().toISOString(),
+            });
+            setStatus({ phase: 'complete', message: t('options.profileForm.status.ruleParsed') });
+            setErrorDetails(null);
           } catch (error: unknown) {
-            parseErrorMessage = t('options.profileForm.status.ruleFailed');
-            parseErrorDetails = error instanceof Error ? error.message : String(error);
+            setStatus({ phase: 'error', message: t('options.profileForm.status.ruleFailed') });
+            setErrorDetails(error instanceof Error ? error.message : String(error));
           }
-        } else if (parseRequested) {
-          const canParse =
-            selectedProvider === 'openai'
-              ? openAiConfig.apiKey.trim().length > 0 && openAiConfig.model.trim().length > 0
-              : selectedProvider === 'gemini'
-                ? geminiConfig.apiKey.trim().length > 0 && geminiConfig.model.trim().length > 0
-                : availability !== 'unavailable';
-          if (!canParse) {
-            parseErrorMessage = t('options.profileForm.status.parseUnavailable');
-          } else {
-            setStatus({ phase: 'parsing', message: t('options.profileForm.status.parsing') });
-            try {
-              const messages = buildResumePrompt(text);
-              const providerConfig: ProviderConfig =
-                selectedProvider === 'openai'
-                  ? createOpenAIProvider(openAiConfig.apiKey, openAiConfig.model, openAiConfig.apiBaseUrl)
-                  : selectedProvider === 'gemini'
-                    ? createGeminiProvider(geminiConfig.apiKey, geminiConfig.model)
-                    : createOnDeviceProvider();
-
-              const raw = await invokeWithProvider(providerConfig, messages, {
-                responseSchema: resumeSchema,
-                temperature: 0,
-                onDeviceTemplate: {
-                  key: 'resume-extraction/v1',
-                  seedMessages: messages.slice(0, 1),
-                },
-              });
-
-              const parsed = JSON.parse(raw) as unknown;
-              const resume: ResumeExtractionResult =
-                parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-                  ? (parsed as ResumeExtractionResult)
-                  : {};
-
-              const snapshot: ProviderSnapshot =
-                providerConfig.kind === 'openai'
-                  ? {
-                      kind: 'openai',
-                      model: providerConfig.model,
-                      apiBaseUrl: providerConfig.apiBaseUrl,
-                    }
-                  : providerConfig.kind === 'gemini'
-                    ? {
-                        kind: 'gemini',
-                        model: providerConfig.model,
-                      }
-                    : { kind: 'on-device' };
-
-              const formValues = resumeToFormValues(resume);
-              const mergedValues = mergeResumeFormValues(form.getValues(), formValues);
-              form.reset(mergedValues);
-
-              const mergedResume = formValuesToResume(mergedValues);
-              const validationResult = validateResume(mergedResume);
-
-              resumeResult = mergedResume;
-              providerSnapshot = snapshot;
-              parsedAt = new Date().toISOString();
-              validation = {
-                valid: validationResult.valid,
-                errors: validationResult.errors,
-              };
-              parseSucceeded = true;
-              setStatus({ phase: 'saving', message: t('options.profileForm.status.savingParsed') });
-            } catch (error: unknown) {
-              if (
-                error instanceof NoProviderConfiguredError ||
-                error instanceof ProviderConfigurationError ||
-                error instanceof ProviderAvailabilityError
-              ) {
-                parseErrorMessage = error.message;
-                parseErrorDetails = null;
-              } else {
-                const message = error instanceof Error ? error.message : String(error);
-                parseErrorMessage =
-                  error instanceof ProviderInvocationError
-                    ? error.message
-                    : t('options.profileForm.status.parseFailed');
-                parseErrorDetails = error instanceof ProviderInvocationError ? null : message;
-              }
-            }
-          }
+          return;
         }
 
-        if (!autoRequested || parseSucceeded) {
-          setStatus({ phase: 'saving', message: t('options.profileForm.status.savingUpload') });
-        }
+        if (parseRequested) {
+          if (!isAiConfigured(createDeepSeekProvider(deepSeekConfig.apiKey, deepSeekConfig.model, deepSeekConfig.apiBaseUrl))) {
+            setStatus({ phase: 'error', message: t('options.aiParse.notConfigured') });
+            setErrorDetails(null);
+            // 文件仍旧存下来，用户可以稍后配置好密钥再解析。
+            await saveProfile({
+              ...selectedProfile,
+              sourceFile: fileRef,
+              rawText: text,
+            });
+            await refreshProfiles(selectedProfile.id);
+            setRawText(text);
+            return;
+          }
 
-        const updated: ProfileRecord = {
-          ...selectedProfile,
-          // merge 而不是整组覆盖：bridge 对「表单不拥有的字段」只能吐 undefined，
-          // 直接展开会把民族 / 政治面貌 / 身份证号 等清空。
-          ...mergeCnProfileData(selectedProfile, cnProfileFieldsFromResume(resumeResult)),
-          sourceFile: fileRef,
-          rawText: text,
-          provider: providerSnapshot,
-          parsedAt,
-          validation,
-        };
+          setStatus({ phase: 'parsing', message: t('options.profileForm.status.parsing') });
+          try {
+            const provider = createDeepSeekProvider(
+              deepSeekConfig.apiKey,
+              deepSeekConfig.model,
+              deepSeekConfig.apiBaseUrl,
+            );
+            const outcome = await parseResumeWithAi(provider, text);
 
-        await saveProfile(updated);
-        await refreshProfiles(updated.id);
-        setRawText(text);
+            // 表单只负责显示它能显示的字段；AI 抽到的中文专有字段由 patch 直接落库。
+            const mergedProfileData = mergeCnProfileData(selectedProfile, outcome.data);
+            const previewProfile: ProfileRecord = { ...selectedProfile, ...mergedProfileData };
 
-        if (autoRequested) {
-          if (parseSucceeded) {
+            await applyParsedData({
+              profile: selectedProfile,
+              text,
+              fileRef,
+              formValues: resumeToFormValues(resumeFromCnProfile(previewProfile)),
+              patch: outcome.data,
+              provider: {
+                kind: 'deepseek',
+                model: provider.model,
+                apiBaseUrl: provider.apiBaseUrl,
+              },
+              parsedAt: new Date().toISOString(),
+            });
+
             setStatus({
               phase: 'complete',
-              message: ruleRequested
-                ? t('options.profileForm.status.ruleParsed')
+              message: outcome.repaired
+                ? t('options.profileForm.status.parsedRepaired')
                 : t('options.profileForm.status.parsed'),
             });
             setErrorDetails(null);
-          } else if (parseErrorMessage) {
-            setStatus({ phase: 'error', message: parseErrorMessage });
-            setErrorDetails(parseErrorDetails);
+          } catch (error: unknown) {
+            setStatus({ phase: 'error', message: describeParseError(error, t) });
+            setErrorDetails(null);
           }
-        } else {
-          setStatus({ phase: 'complete', message: t('options.profileForm.status.stored') });
-          setErrorDetails(null);
+          return;
         }
+
+        // 第三条路：只保存文件与文本，不做任何抽取。
+        setStatus({ phase: 'saving', message: t('options.profileForm.status.savingUpload') });
+        const updated: ProfileRecord = {
+          ...selectedProfile,
+          sourceFile: fileRef,
+          rawText: text,
+        };
+        await saveProfile(updated);
+        await refreshProfiles(updated.id);
+        setRawText(text);
+        setStatus({ phase: 'complete', message: t('options.profileForm.status.stored') });
+        setErrorDetails(null);
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
         setStatus({ phase: 'error', message: t('options.profileForm.status.uploadFailed') });
@@ -407,16 +368,7 @@ export function useProfilesManager({
         setBusyAction(null);
       }
     },
-    [
-      availability,
-      form,
-      geminiConfig,
-      openAiConfig,
-      refreshProfiles,
-      selectedProfile,
-      selectedProvider,
-      t,
-    ],
+    [applyParsedData, deepSeekConfig, form, refreshProfiles, selectedProfile, t],
   );
 
   const handleFileAction = useCallback(
@@ -438,6 +390,7 @@ export function useProfilesManager({
     setParseAgainConfirmOpen(false);
   }, []);
 
+  /** 用已保存的原始文本再跑一次 AI 解析（不重新上传 PDF）。 */
   const handleParseAgain = useCallback(async () => {
     if (!selectedProfile || busy) {
       return;
@@ -448,15 +401,13 @@ export function useProfilesManager({
       return;
     }
 
-    const canParse =
-      selectedProvider === 'openai'
-        ? openAiConfig.apiKey.trim().length > 0 && openAiConfig.model.trim().length > 0
-        : selectedProvider === 'gemini'
-          ? geminiConfig.apiKey.trim().length > 0 && geminiConfig.model.trim().length > 0
-          : availability !== 'unavailable';
-
-    if (!canParse) {
-      setStatus({ phase: 'error', message: t('options.profileForm.status.parseUnavailable') });
+    const provider = createDeepSeekProvider(
+      deepSeekConfig.apiKey,
+      deepSeekConfig.model,
+      deepSeekConfig.apiBaseUrl,
+    );
+    if (!isAiConfigured(provider)) {
+      setStatus({ phase: 'error', message: t('options.aiParse.notConfigured') });
       setErrorDetails(null);
       return;
     }
@@ -467,103 +418,40 @@ export function useProfilesManager({
     setStatus({ phase: 'parsing', message: t('options.profileForm.status.parsing') });
 
     try {
-      const messages = buildResumePrompt(text);
-      const providerConfig: ProviderConfig =
-        selectedProvider === 'openai'
-          ? createOpenAIProvider(openAiConfig.apiKey, openAiConfig.model, openAiConfig.apiBaseUrl)
-          : selectedProvider === 'gemini'
-            ? createGeminiProvider(geminiConfig.apiKey, geminiConfig.model)
-            : createOnDeviceProvider();
+      const outcome = await parseResumeWithAi(provider, text);
+      const mergedProfileData = mergeCnProfileData(selectedProfile, outcome.data);
+      const previewProfile: ProfileRecord = { ...selectedProfile, ...mergedProfileData };
 
-      const raw = await invokeWithProvider(providerConfig, messages, {
-        responseSchema: resumeSchema,
-        temperature: 0,
-        onDeviceTemplate: {
-          key: 'resume-extraction/v1',
-          seedMessages: messages.slice(0, 1),
+      await applyParsedData({
+        profile: selectedProfile,
+        text,
+        fileRef: selectedProfile.sourceFile,
+        formValues: resumeToFormValues(resumeFromCnProfile(previewProfile)),
+        patch: outcome.data,
+        provider: {
+          kind: 'deepseek',
+          model: provider.model,
+          apiBaseUrl: provider.apiBaseUrl,
         },
+        parsedAt: new Date().toISOString(),
       });
 
-      const parsed = JSON.parse(raw) as unknown;
-      const resume: ResumeExtractionResult =
-        parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-          ? (parsed as ResumeExtractionResult)
-          : {};
-
-      const snapshot: ProviderSnapshot =
-        providerConfig.kind === 'openai'
-          ? {
-              kind: 'openai',
-              model: providerConfig.model,
-              apiBaseUrl: providerConfig.apiBaseUrl,
-            }
-          : providerConfig.kind === 'gemini'
-            ? {
-                kind: 'gemini',
-                model: providerConfig.model,
-              }
-            : { kind: 'on-device' };
-
-      const parsedValues = resumeToFormValues(resume);
-      const mergedValues = mergeResumeFormValues(form.getValues(), parsedValues);
-      form.reset(mergedValues);
-
-      const mergedResume = formValuesToResume(mergedValues);
-      const validationResult = validateResume(mergedResume);
-
-      setStatus({ phase: 'saving', message: t('options.profileForm.status.savingParsed') });
-
-      const updated: ProfileRecord = {
-        ...selectedProfile,
-        ...mergeCnProfileData(selectedProfile, cnProfileFieldsFromResume(mergedResume)),
-        provider: snapshot,
-        parsedAt: new Date().toISOString(),
-        validation: {
-          valid: validationResult.valid,
-          errors: validationResult.errors,
-        },
-      };
-
-      await saveProfile(updated);
-      await refreshProfiles(updated.id);
-      setStatus({ phase: 'complete', message: t('options.profileForm.status.parsed') });
+      setStatus({
+        phase: 'complete',
+        message: outcome.repaired
+          ? t('options.profileForm.status.parsedRepaired')
+          : t('options.profileForm.status.parsed'),
+      });
       setErrorDetails(null);
     } catch (error: unknown) {
-      if (
-        error instanceof NoProviderConfiguredError ||
-        error instanceof ProviderConfigurationError ||
-        error instanceof ProviderAvailabilityError
-      ) {
-        setStatus({ phase: 'error', message: error.message });
-        setErrorDetails(null);
-      } else {
-        const message = error instanceof Error ? error.message : String(error);
-        const displayMessage =
-          error instanceof ProviderInvocationError
-            ? error.message
-            : t('options.profileForm.status.parseFailed');
-        const details = error instanceof ProviderInvocationError ? null : message;
-        setStatus({ phase: 'error', message: displayMessage });
-        setErrorDetails(details);
-      }
+      setStatus({ phase: 'error', message: describeParseError(error, t) });
+      setErrorDetails(null);
       console.error(error);
     } finally {
       setBusy(false);
       setBusyAction(null);
     }
-  }, [
-    availability,
-    busy,
-    closeParseAgainConfirm,
-    form,
-    geminiConfig,
-    openAiConfig,
-    rawText,
-    refreshProfiles,
-    selectedProfile,
-    selectedProvider,
-    t,
-  ]);
+  }, [applyParsedData, busy, closeParseAgainConfirm, deepSeekConfig, rawText, selectedProfile, t]);
 
   const handleSaveForm = useCallback(
     async (values: ResumeFormValues) => {
@@ -707,22 +595,11 @@ export function useProfilesManager({
 
   const formSaving = busy && busyAction === 'save';
 
-  const canParseAgain = Boolean(selectedProfile && rawText.trim().length > 0);
-
-  // The manual copy helper ("paste this prompt into ChatGPT, paste the JSON
-  // back") is for people who cannot run a model from here. With AI now opt-in,
-  // that is everyone on the default 'none' setting — not just users whose
-  // Chrome happens to lack Gemini Nano, which is all the old check covered.
-  const aiUsable =
-    (selectedProvider === 'on-device' && availability === 'available') ||
-    (selectedProvider === 'openai' &&
-      openAiConfig.apiKey.trim().length > 0 &&
-      openAiConfig.model.trim().length > 0) ||
-    (selectedProvider === 'gemini' &&
-      geminiConfig.apiKey.trim().length > 0 &&
-      geminiConfig.model.trim().length > 0);
-
-  const showCopyHelper = Boolean(selectedProfile && rawText.trim().length > 0 && !aiUsable);
+  const canParseAgain = Boolean(
+    selectedProfile && rawText.trim().length > 0 && isAiConfigured(
+      createDeepSeekProvider(deepSeekConfig.apiKey, deepSeekConfig.model, deepSeekConfig.apiBaseUrl),
+    ),
+  );
 
   const profilesErrorLabel = profilesState.error
     ? t('onboarding.manage.error', [profilesState.error])
@@ -746,7 +623,6 @@ export function useProfilesManager({
     rawSummary,
     formSaving,
     canParseAgain,
-    showCopyHelper,
     profilesErrorLabel,
     handleSaveForm,
     handleResetForm,
@@ -760,4 +636,18 @@ export function useProfilesManager({
     closeParseAgainConfirm,
     handleParseAgain,
   };
+}
+
+/** 把解析失败的原因翻成一句人话：校验失败优先给明细，其余用 provider 的原话。 */
+function describeParseError(
+  error: unknown,
+  t: (key: string, substitutions?: unknown) => string,
+): string {
+  if (error instanceof ResumeParseError) {
+    return error.message;
+  }
+  if (error instanceof ProviderConfigurationError || error instanceof ProviderInvocationError) {
+    return error.message;
+  }
+  return t('options.profileForm.status.parseFailed');
 }
