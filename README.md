@@ -23,6 +23,8 @@
 
 ## 快速上手
 
+> 面向使用者的完整流程（含排错速查、校招专属字段、测试台练手）见 [`docs/quickstart-cn.md`](docs/quickstart-cn.md)。
+
 ```bash
 pnpm install
 pnpm build                 # 产物在 .output/chrome-mv3
@@ -30,7 +32,7 @@ pnpm build                 # 产物在 .output/chrome-mv3
 
 1. Chrome 打开 `chrome://extensions` → 右上角开启「开发者模式」→「加载已解压的扩展程序」→ 选 `.output/chrome-mv3`。
 2. 扩展详情页点「扩展程序选项」进工作台，导入一份 `profile.json`（零 AI 依赖，规则匹配即可跑通）。
-3. 打开一个投递页，点工具栏图标 → 侧边栏「扫描」→「✨ 填写匹配字段」。
+3. 打开一个投递页，点工具栏图标 →「打开侧边栏」→ 先「允许扫描」，再点「填写匹配字段」。
 
 本地测试台（含 `ats-cn.html`，39 类中文标签 + 自检面板）：
 
