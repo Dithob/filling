@@ -42,7 +42,7 @@ import { getAllAdapterIds } from '../../shared/apply/slots';
 import { resolveFieldSlot } from '../../shared/apply/fieldMapping';
 import { buildSlotValues, buildCustomAnswers, type SlotValueMap } from '../../shared/apply/profile';
 import { classifyFieldDescriptors, type FieldDescriptor } from './classifySlots';
-import { getSettings } from '../../shared/storage/settings';
+import { getSettings, isAiEnabled } from '../../shared/storage/settings';
 import {
   NoProviderConfiguredError,
   ProviderAvailabilityError,
@@ -73,6 +73,9 @@ export default function App() {
   const [viewState, setViewState] = useState<ViewState>({ loadingProfiles: true });
   const [scanning, setScanning] = useState(false);
   const [classifying, setClassifying] = useState(false);
+  // Whether the user opted into AI at all. Drives the AI-only affordances so a
+  // default install (provider: 'none') never shows a control that cannot work.
+  const [aiEnabled, setAiEnabled] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const defaultAdapterIds = useMemo(() => getAllAdapterIds(), []);
   const [activeAdapterIds, setActiveAdapterIds] = useState<string[]>(defaultAdapterIds);
@@ -229,6 +232,7 @@ export default function App() {
         const settings = await getSettings();
         if (cancelled) return;
         providerRef.current = settings.provider;
+        setAiEnabled(isAiEnabled(settings.provider));
         setActiveAdapterIds(settings.adapters.length > 0 ? settings.adapters : defaultAdapterIds);
         fillModeRef.current = settings.fillMode;
       } catch (error) {
@@ -950,7 +954,9 @@ export default function App() {
         entry.status === 'filled',
     );
 
-  const classifyDisabled = classifying || fields.length === 0;
+  // Classifying sends every unmatched field to a model, so it needs AI on top
+  // of a scan. Everything else in the toolbar runs on local rules only.
+  const classifyDisabled = classifying || fields.length === 0 || !aiEnabled;
 
   const renderDomToolbar = () => {
     const iconSize = 18;
@@ -996,13 +1002,20 @@ export default function App() {
             variant: scanning ? 'filled' : 'light',
             icon: <RefreshCcw size={iconSize} />,
           })}
-          {renderIconButton(classifying ? t('sidepanel.toolbar.classifying') : t('sidepanel.toolbar.classify'), {
-            onClick: handleClassify,
-            disabled: classifyDisabled,
-            color: 'violet',
-            variant: classifying ? 'filled' : 'light',
-            icon: <Wand2 size={iconSize} />,
-          })}
+          {renderIconButton(
+            !aiEnabled
+              ? t('sidepanel.toolbar.classifyNeedsAi')
+              : classifying
+                ? t('sidepanel.toolbar.classifying')
+                : t('sidepanel.toolbar.classify'),
+            {
+              onClick: handleClassify,
+              disabled: classifyDisabled,
+              color: 'violet',
+              variant: classifying ? 'filled' : 'light',
+              icon: <Wand2 size={iconSize} />,
+            },
+          )}
           {renderIconButton(t('sidepanel.toolbar.fillMapped'), {
             onClick: handleAutoFill,
             disabled: fillDisabled,

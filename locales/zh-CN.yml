@@ -15,7 +15,7 @@ options:
     noProfile: 请先创建一个方案才能导出。
   sections:
     gettingStarted: 入门
-    provider: AI 提供方
+    provider: AI（可选）
     profiles: 档案
     autofill: 自动填表
     advanced: 高级
@@ -23,16 +23,17 @@ options:
     title: 快速导航
     helper: 点击任意项目即可跳到对应的设置区块。
   gettingStarted:
-    helper: 按照下方步骤完成字段簿的初始设置。
+    helper: 两步就能开始填表。AI 是可选项，默认关闭。
     tip: '提示：将字段簿固定到浏览器工具栏，随时一键开启自动填表。'
   checklist:
-    provider:
-      title: 连接 AI 提供方
-      description: 选择 Chrome 本地、OpenAI 或 Gemini。
     profile:
-      title: 创建首个档案
-      description: 上传简历并使用提供方进行解析。
+      title: 创建或导入一份简历
+      description: 导入 profile.json、上传简历 PDF，或者直接手动填写。
+    provider:
+      title: 可选 —— 启用 AI 模型
+      description: 仅用于识别字典未命中的字段、起草开放题答案和智能解析 PDF。不启用也能正常填表。
     openSection: 打开区块
+    optional: 可选
   provider:
     heading: 服务提供方
     onDevice: Chrome 本地模型（Prompt API）
@@ -45,7 +46,9 @@ options:
     apiKey: API 密钥
     model: 模型
     apiBaseUrl: API 基础地址
-    helper: 选择字段簿用来解析简历并驱动自动填表的模型。
+    helper: 可选。匹配与填表由本地字段字典完成——只在需要识别未命中字段或生成文案时才开启。
+    moreOptions: 高级 —— 接入云端模型
+    onDeviceNoChinese: 注意：Chrome 本地模型只支持 de / en / es / fr / ja，无法生成中文。
   adapters:
     heading: 字段匹配适配器
     description: 选择字段簿需要启用的字段标签适配器。所有匹配均在本地完成。
@@ -401,6 +404,7 @@ sidepanel:
     scanning: 正在扫描…
     rescan: 重新扫描页面
     classify: 识别字段
+    classifyNeedsAi: 需在设置里启用 AI 模型才能识别字段（可选——字典匹配不需要它）
     classifying: 正在识别…
     fillMapped: 填写匹配字段
     clearOverlay: 清除高亮

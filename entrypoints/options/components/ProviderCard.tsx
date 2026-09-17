@@ -17,6 +17,9 @@ interface ProviderCardProps {
   headingIconColor?: string;
   providerLabels: Record<ProviderKind, string>;
   selectedProvider: ProviderKind;
+  noneHint: string;
+  moreOptionsLabel: string;
+  onDeviceNoChinese: string;
   canUseOnDevice: boolean;
   onDeviceSupport?: OnDeviceSupportProps;
   openAi: {
@@ -53,6 +56,9 @@ export function ProviderCard({
   headingIconColor = 'brand',
   providerLabels,
   selectedProvider,
+  noneHint,
+  moreOptionsLabel,
+  onDeviceNoChinese,
   canUseOnDevice,
   onDeviceSupport,
   openAi,
@@ -90,11 +96,23 @@ export function ProviderCard({
           onChange={(value) => onProviderChange(value as ProviderKind)}
         >
           <Stack gap={6}>
+            <Radio value="none" label={providerLabels.none} />
+            <Text fz="sm" c="dimmed" pl="sm" maw={560}>
+              {noneHint}
+            </Text>
+
+            <Text fz="sm" fw={600} c="dimmed" mt="xs">
+              {moreOptionsLabel}
+            </Text>
+
             <Radio
               value="on-device"
               label={providerLabels['on-device']}
               disabled={!canUseOnDevice}
             />
+            <Text fz="sm" c="dimmed" pl="sm" maw={560}>
+              {onDeviceNoChinese}
+            </Text>
             {showOnDeviceSupport && onDeviceSupport && (
               <Stack gap={6} pl="sm">
                 {onDeviceSupport.note && (

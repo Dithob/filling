@@ -219,19 +219,21 @@ export default function App() {
   const hasProfiles = profiles.length > 0;
   const setupChecklist = useMemo<SetupChecklistItem[]>(
     () => [
-      {
-        id: 'provider',
-        complete: providerConfigured,
-        title: t('options.checklist.provider.title'),
-        description: t('options.checklist.provider.description'),
-        target: 'section-provider',
-      },
+      // The required step comes first: you can be productive with zero AI.
       {
         id: 'profile',
         complete: hasProfiles,
         title: t('options.checklist.profile.title'),
         description: t('options.checklist.profile.description'),
         target: 'section-profiles',
+      },
+      {
+        id: 'provider',
+        complete: providerConfigured,
+        title: t('options.checklist.provider.title'),
+        description: t('options.checklist.provider.description'),
+        target: 'section-provider',
+        optional: true,
       },
     ],
     [providerConfigured, hasProfiles, t],
@@ -274,7 +276,10 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (!providerConfigured || !hasProfiles || onboardingCompleted === null) {
+    // Onboarding completion must not depend on having configured a model:
+    // with AI optional, requiring it here meant the celebration overlay could
+    // never fire for a user who deliberately runs without AI.
+    if (!hasProfiles || onboardingCompleted === null) {
       return;
     }
     if (!onboardingCompleted) {
@@ -285,7 +290,7 @@ export default function App() {
         console.warn('Unable to persist onboarding completion', error);
       });
     }
-  }, [providerConfigured, hasProfiles, onboardingCompleted]);
+  }, [hasProfiles, onboardingCompleted]);
 
   useEffect(() => {
     return () => {
@@ -435,6 +440,7 @@ export default function App() {
                 headingDescription={t('options.gettingStarted.helper')}
                 checklist={setupChecklist}
                 openSectionLabel={t('options.checklist.openSection')}
+                optionalLabel={t('options.checklist.optional')}
                 tip={t('options.gettingStarted.tip')}
                 onNavigate={handleScrollTo}
               />
@@ -452,6 +458,9 @@ export default function App() {
                 headingIconColor="brand"
                 providerLabels={providerLabels}
                 selectedProvider={selectedProvider}
+                noneHint={t('options.provider.noneHint')}
+                moreOptionsLabel={t('options.provider.moreOptions')}
+                onDeviceNoChinese={t('options.provider.onDeviceNoChinese')}
                 canUseOnDevice={canUseOnDevice}
                 onDeviceSupport={onDeviceSupport}
                 openAi={{

@@ -181,6 +181,9 @@ const AI_DEBOUNCE_MS = 250;
 function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
   const [aiSlot, setAiSlot] = useState<PromptOptionSlot | null>(null);
+  // Once the background answers "AI is off" (the default setting), stop asking
+  // for the rest of this overlay session instead of firing a request per keystroke.
+  const [aiDisabled, setAiDisabled] = useState(false);
   const requestTokenRef = useRef(0);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -195,11 +198,12 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
     textareaRef.current?.focus({ preventScroll: true });
     setAiSuggestion(null);
     setAiSlot(null);
+    setAiDisabled(false);
     requestTokenRef.current = 0;
   }, [prompt.requestId]);
 
   useEffect(() => {
-    if (!canRequestAi) {
+    if (!canRequestAi || aiDisabled) {
       setAiSuggestion(null);
       setAiSlot(null);
       return;
@@ -245,6 +249,14 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
           if (error instanceof Error && error.name === 'AbortError') {
             return;
           }
+          // AI turned off in settings: not an error the user needs to see.
+          // Local matches are already rendered below, so just stay quiet.
+          if (error instanceof Error && error.name === 'AiDisabledError') {
+            setAiDisabled(true);
+            setAiSuggestion(null);
+            setAiSlot(null);
+            return;
+          }
           const message = error instanceof Error ? error.message : String(error);
           editor.setAiError(message || tLoose('overlay.prompt.aiError'));
           setAiSuggestion(null);
@@ -256,7 +268,7 @@ function PromptForm({ t, tLoose, prompt, editor }: PromptFormProps) {
       window.clearTimeout(timeoutId);
       requestTokenRef.current += 1;
     };
-  }, [canRequestAi, editor.value, editor.requestAi, editor.setAiError, tLoose]);
+  }, [aiDisabled, canRequestAi, editor.value, editor.requestAi, editor.setAiError, tLoose]);
 
   const suggestionCandidate = useMemo<SuggestionCandidate | null>(() => {
     const trimmedValue = editor.value.trim().toLowerCase();

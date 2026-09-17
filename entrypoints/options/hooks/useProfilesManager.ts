@@ -673,12 +673,20 @@ export function useProfilesManager({
 
   const canParseAgain = Boolean(selectedProfile && rawText.trim().length > 0);
 
-  const showCopyHelper = Boolean(
-    selectedProfile &&
-      rawText.trim().length > 0 &&
-      selectedProvider === 'on-device' &&
-      availability === 'unavailable',
-  );
+  // The manual copy helper ("paste this prompt into ChatGPT, paste the JSON
+  // back") is for people who cannot run a model from here. With AI now opt-in,
+  // that is everyone on the default 'none' setting — not just users whose
+  // Chrome happens to lack Gemini Nano, which is all the old check covered.
+  const aiUsable =
+    (selectedProvider === 'on-device' && availability === 'available') ||
+    (selectedProvider === 'openai' &&
+      openAiConfig.apiKey.trim().length > 0 &&
+      openAiConfig.model.trim().length > 0) ||
+    (selectedProvider === 'gemini' &&
+      geminiConfig.apiKey.trim().length > 0 &&
+      geminiConfig.model.trim().length > 0);
+
+  const showCopyHelper = Boolean(selectedProfile && rawText.trim().length > 0 && !aiUsable);
 
   const profilesErrorLabel = profilesState.error
     ? t('onboarding.manage.error', [profilesState.error])

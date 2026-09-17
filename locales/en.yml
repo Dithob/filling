@@ -15,7 +15,7 @@ options:
     noProfile: Create a profile first to enable export.
   sections:
     gettingStarted: Getting started
-    provider: AI provider
+    provider: AI (optional)
     profiles: Profiles
     autofill: Autofill
     advanced: Advanced
@@ -23,16 +23,17 @@ options:
     title: Quick sections
     helper: Jump to any settings section without losing your place.
   gettingStarted:
-    helper: Follow the checklist to finish setting up FieldBook.
+    helper: Two steps and you can start filling applications. AI is optional and off by default.
     tip: 'Tip: Pin FieldBook in your browser toolbar so you can launch autofill faster.'
   checklist:
-    provider:
-      title: Connect an AI provider
-      description: Pick Chrome on-device, OpenAI, or Gemini.
     profile:
-      title: Create your first profile
-      description: Upload a resume and let your provider parse it.
+      title: Create or import a profile
+      description: Import a profile.json, upload a resume PDF, or type the details in by hand.
+    provider:
+      title: Optional — turn on an AI model
+      description: Only used to classify fields the dictionary missed, draft open-ended answers, and parse PDFs smartly. Filling works without it.
     openSection: Open section
+    optional: Optional
   provider:
     heading: Provider
     onDevice: Chrome on-device (Prompt API)
@@ -45,7 +46,9 @@ options:
     apiKey: API key
     model: Model
     apiBaseUrl: API base URL
-    helper: Choose how FieldBook parses resumes and powers autofill.
+    helper: Optional. Matching and filling run locally from your field dictionary — turn AI on only when you want unmatched fields classified or copy generated.
+    moreOptions: Advanced — connect a hosted model
+    onDeviceNoChinese: "Note: Chrome's built-in model supports only de / en / es / fr / ja, so it cannot write Chinese."
   adapters:
     heading: Field adapters
     description: Choose which label adapters FieldBook should use when matching fields. All matching runs locally.
@@ -401,6 +404,7 @@ sidepanel:
     scanning: Scanning…
     rescan: Rescan page
     classify: Classify fields
+    classifyNeedsAi: Turn on an AI model in settings to classify fields (optional — dictionary matching works without it)
     classifying: Classifying…
     fillMapped: Fill mapped fields
     clearOverlay: Clear overlay

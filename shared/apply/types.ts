@@ -118,7 +118,12 @@ export interface PromptAiAbortMessage {
 export type PromptAiSuggestResponse =
   | { status: 'ok'; value: string; slot?: PromptOptionSlot | null }
   | { status: 'error'; error: string }
-  | { status: 'aborted' };
+  | { status: 'aborted' }
+  /**
+   * 用户没有启用 AI（默认档 provider: 'none'）。与 error 区分开是必要的：
+   * 浮层在打字后会自动补全，若把"没开 AI"当成错误，用户每敲几个字就会看到一条红色报错。
+   */
+  | { status: 'disabled' };
 
 export interface FillFilePayload {
   name: string;

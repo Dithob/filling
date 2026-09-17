@@ -77,6 +77,30 @@ export function createOnDeviceProvider(): ProviderConfig {
   return { kind: 'on-device' };
 }
 
+/**
+ * Whether the user has opted into AI *and* given it something usable.
+ *
+ * Checks that only need to know "is AI on?" (e.g. whether to show the
+ * classify-these-fields button) should gate on this. Chrome's on-device model
+ * cannot be probed synchronously, so it counts as enabled here; if the model
+ * is missing at call time, invokeWithProvider reports it and the caller falls
+ * back to the local dictionary.
+ */
+export function isAiEnabled(provider: ProviderConfig | null | undefined): boolean {
+  if (!provider) {
+    return false;
+  }
+  switch (provider.kind) {
+    case 'none':
+      return false;
+    case 'on-device':
+      return true;
+    case 'openai':
+    case 'gemini':
+      return provider.apiKey.trim().length > 0 && provider.model.trim().length > 0;
+  }
+}
+
 export function createOpenAIProvider(
   apiKey: string,
   model: string,

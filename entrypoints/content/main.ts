@@ -114,6 +114,16 @@ function createAbortError(): Error {
   }
 }
 
+/**
+ * 用户没启用 AI。用独立的名字而不是普通 Error，是为了让浮层能静默忽略它——
+ * 否则每敲几个字就会弹一次"没有配置 AI 提供方"的报错。
+ */
+function createAiDisabledError(): Error {
+  const error = new Error('AI is disabled');
+  error.name = 'AiDisabledError';
+  return error;
+}
+
 function requestPromptAi(
   payload: PromptAiSuggestMessage,
   signal?: AbortSignal,
@@ -183,6 +193,10 @@ function requestPromptAi(
           }
           if (response.status === 'aborted') {
             rejectWithAbort();
+            return;
+          }
+          if (response.status === 'disabled') {
+            reject(createAiDisabledError());
             return;
           }
           if (response.status === 'ok') {

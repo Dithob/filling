@@ -27,7 +27,7 @@ import {
   ProviderConfigurationError,
   ProviderInvocationError,
 } from '../shared/llm/errors';
-import { getSettings } from '../shared/storage/settings';
+import { getSettings, isAiEnabled } from '../shared/storage/settings';
 import { getProfile } from '../shared/storage/profiles';
 import {
   ACTIVE_PROFILE_STORAGE_KEY,
@@ -781,6 +781,12 @@ async function handlePromptAiSuggestMessage(
     }
     const settings = await getSettings();
     const provider = settings.provider;
+    if (!isAiEnabled(provider)) {
+      // Single gate for every AI entry point (overlay type-ahead, guided
+      // suggestion, single-field fill): with AI off, nothing must reach a
+      // model, and callers must be able to tell "off" apart from "failed".
+      return { status: 'disabled' };
+    }
     const profileRecord = profileId ? await getProfile(profileId) : undefined;
     const result = await requestGuidedSuggestion({
       provider,
