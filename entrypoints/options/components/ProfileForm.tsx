@@ -5,6 +5,7 @@ import {
   FileInput,
   Group,
   Paper,
+  Select,
   Stack,
   Text,
   Textarea,
@@ -19,6 +20,13 @@ import {
   parseCustomEntries,
   type CustomEntry,
 } from '../hooks/profileFormMeta';
+import { formatCustomFieldLabel } from '../../../shared/apply/slotLabels';
+import {
+  STRUCTURED_FIELD_ORDER,
+  isEditorHiddenKey,
+  isReservedCustomKey,
+  structuredFieldRank,
+} from '../../../shared/schema/reservedCustomKeys';
 
 export interface ResumeFormValues {
   basics: {
@@ -1606,6 +1614,26 @@ function MetaSection({ form, disabled }: SectionProps) {
   const { t } = i18n;
   const customArray = useResumeArrayField(form, 'meta.custom');
 
+  // 表单数组是「结构化字段 + 用户自定义问答」混装的一维数组——保留键是桥接层写回
+  // CnProfile 结构化字段的唯一通道（见 cnProfileBridge 的 resumeFromCnProfile），
+  // 必须留在数组里才能往返，所以只在渲染层拆成两块。index 一律用数组真实下标，
+  // 排序只改显示顺序，不影响 register / remove 的定位。
+  //
+  // 用 fields 驱动渲染（append 之后 fields 先更新），键值优先取 watch 到的最新值、
+  // 取不到时回落到 fields 的快照——只认 fields 会漏掉用户刚改的键名，只认 items 会漏掉刚追加的行。
+  const rows = customArray.fields.map((field, index) => ({
+    id: field.id,
+    index,
+    key: (customArray.items[index]?.key ?? field.key ?? '').trim(),
+  }));
+  const structuredRows = rows
+    .filter((row) => isReservedCustomKey(row.key) && !isEditorHiddenKey(row.key))
+    .sort((a, b) => structuredFieldRank(a.key) - structuredFieldRank(b.key));
+  const customRows = rows.filter((row) => !isReservedCustomKey(row.key));
+  const presentStructured = new Set(structuredRows.map((row) => row.key));
+  const addableStructured = STRUCTURED_FIELD_ORDER.filter((key) => !presentStructured.has(key));
+  const structuredLabel = (key: string) => formatCustomFieldLabel(key) ?? key;
+
   return (
     <Stack gap="md">
       <TextInput
@@ -1627,10 +1655,53 @@ function MetaSection({ form, disabled }: SectionProps) {
       />
 
       <Stack gap="sm">
+        <Stack gap={2}>
+          <Text fz="sm" fw={600}>
+            {t('options.profileForm.meta.custom.structuredHeading')}
+          </Text>
+          <Text fz="xs" c="dimmed">
+            {t('options.profileForm.meta.custom.structuredDescription')}
+          </Text>
+        </Stack>
+        {structuredRows.length === 0 && (
+          <Text fz="sm" c="dimmed">
+            {t('options.profileForm.meta.custom.structuredEmpty')}
+          </Text>
+        )}
+        {structuredRows.map((row) => (
+          <TextInput
+            key={row.id}
+            label={structuredLabel(row.key)}
+            description={row.key}
+            disabled={disabled}
+            {...form.register(`meta.custom.${row.index}.value` as const)}
+          />
+        ))}
+        {addableStructured.length > 0 && (
+          <Select
+            label={t('options.profileForm.meta.custom.structuredAdd')}
+            placeholder={t('options.profileForm.meta.custom.structuredAddPlaceholder')}
+            data={addableStructured.map((key) => ({ value: key, label: structuredLabel(key) }))}
+            value={null}
+            searchable
+            disabled={disabled}
+            comboboxProps={{ withinPortal: true }}
+            onChange={(key) => {
+              if (key) {
+                customArray.append({ key, value: '' });
+              }
+            }}
+          />
+        )}
+      </Stack>
+
+      <Divider />
+
+      <Stack gap="sm">
         <Group justify="space-between" align="center">
           <Stack gap={2}>
             <Text fz="sm" fw={600}>
-              {t('options.profileForm.meta.custom.heading')}
+              {t('options.profileForm.meta.custom.customHeading')}
             </Text>
             <Text fz="xs" c="dimmed">
               {t('options.profileForm.meta.custom.description')}
@@ -1645,29 +1716,29 @@ function MetaSection({ form, disabled }: SectionProps) {
             {t('options.profileForm.meta.custom.add')}
           </Button>
         </Group>
-        {customArray.items.length === 0 && (
+        {customRows.length === 0 && (
           <Text fz="sm" c="dimmed">
             {t('options.profileForm.meta.custom.empty')}
           </Text>
         )}
-        {customArray.fields.map((entryField, index) => (
-          <Group key={entryField.id} align="flex-end" wrap="nowrap">
+        {customRows.map((row) => (
+          <Group key={row.id} align="flex-end" wrap="nowrap">
             <TextInput
               label={t('options.profileForm.meta.custom.key')}
               style={{ flex: 1 }}
               disabled={disabled}
-              {...form.register(`meta.custom.${index}.key` as const)}
+              {...form.register(`meta.custom.${row.index}.key` as const)}
             />
             <TextInput
               label={t('options.profileForm.meta.custom.value')}
               style={{ flex: 1.4 }}
               disabled={disabled}
-              {...form.register(`meta.custom.${index}.value` as const)}
+              {...form.register(`meta.custom.${row.index}.value` as const)}
             />
             <ActionIcon
               variant="subtle"
               color="red"
-              onClick={() => customArray.remove(index)}
+              onClick={() => customArray.remove(row.index)}
               disabled={disabled}
               aria-label={t('options.profileForm.meta.custom.remove')}
             >

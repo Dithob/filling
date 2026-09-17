@@ -289,13 +289,18 @@ options:
       version: Version
       lastModified: Last modified
       custom:
-        heading: Extra fields
-        description: Values JSON Resume has no slot for (nation, political status, ID number…) plus your own question-to-answer fallbacks. Keys are matched against form labels.
+        description: Your own question-to-answer fallbacks. An answer is used when a page label contains its key, so write keys that read like the form label itself (at least 2 characters).
         add: Add field
-        empty: No extra fields yet.
+        empty: No custom answers yet.
         key: Question / field name
         value: Answer
         remove: Remove field
+        customHeading: Custom answers
+        structuredHeading: Chinese campus fields
+        structuredDescription: Campus fields already stored on this profile (nation, hometown, English level…). FieldBook fixes the key names — just edit the values. Clearing one and saving removes it.
+        structuredEmpty: This profile has none of these fields yet — add one below.
+        structuredAdd: Add a field
+        structuredAddPlaceholder: Choose a field
     actions:
       reset: Reset changes
       saving: Saving…
@@ -513,6 +518,7 @@ slots:
   awards: Awards
   researchDirection: Research direction
   hobbies: Hobbies
+  portfolio: Portfolio
 overlay:
   prompt:
     heading: Suggested value

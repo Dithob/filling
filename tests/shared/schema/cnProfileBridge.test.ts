@@ -188,6 +188,29 @@ describe('表单往返', () => {
     expect(saved.intention.internshipDuration).toBe('6个月');
   });
 
+  it('借 meta.custom 承载的结构化字段：键存在但为空 = 显式清空', () => {
+    const profile = makeProfile();
+    const patch = cnProfileFieldsFromResume({
+      meta: { custom: { hometown: '', englishLevel: 'CET-4', ranking: '' } },
+    });
+    const saved = mergeCnProfileData(profile, patch);
+
+    expect(saved.basic.hometown).toBe('');
+    expect(saved.education.ranking).toBe('');
+    // 同一批里没被清空的照常写入
+    expect(saved.basic.englishLevel).toBe('CET-4');
+  });
+
+  it('借 meta.custom 承载的结构化字段：键不存在时保留原值', () => {
+    const profile = makeProfile();
+    const patch = cnProfileFieldsFromResume({ meta: { custom: {} } });
+    const saved = mergeCnProfileData(profile, patch);
+
+    expect(saved.basic.hometown).toBe('浙江宁波');
+    expect(saved.education.ranking).toBe('5/120');
+    expect(saved.intention.internshipDuration).toBe('6个月');
+  });
+
   it('在表单里编辑基础字段会写入存储', () => {
     const profile = makeProfile();
     const resume = resumeFromCnProfile(profile);

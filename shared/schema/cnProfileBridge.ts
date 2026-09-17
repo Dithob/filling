@@ -10,12 +10,34 @@
  * profile has at most one education entry and no work history worth keeping.
  */
 import type { CnProfile, CnProfileData } from './cnProfile';
+import { isReservedCustomKey } from './reservedCustomKeys';
 
 type Recordish = Record<string, unknown>;
 
 function asRecord(value: unknown): Recordish | undefined {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     return value as Recordish;
+  }
+  return undefined;
+}
+
+/**
+ * 读取借 `meta.custom` 承载的结构化字段。
+ *
+ * 与 `str` 只差一处，但很关键：**键存在且为空串时返回 `''`，而不是 undefined**。
+ * `mergeCnProfileData` 把 undefined 当「保留原值」、把 `''` 当「真的清空」，
+ * 于是「在扩展字段里把英语水平清空再保存」才生效。键不存在时仍然是 undefined。
+ */
+function structuredStr(source: Recordish, key: string): string | undefined {
+  if (!(key in source)) {
+    return undefined;
+  }
+  const value = source[key];
+  if (typeof value === 'string') {
+    return value.trim();
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
   }
   return undefined;
 }
@@ -79,38 +101,10 @@ function mapEnum(value: unknown, table: Record<string, string>): string | undefi
 }
 
 /**
- * `resumeFromCnProfile` 借用 meta.custom 承载这些结构化字段，
- * 反向转换时不能再把它们当成用户的「问题 -> 答案」兜底项。
- */
-const RESERVED_CUSTOM_KEYS = new Set([
-  'nation',
-  'politicalStatus',
-  'idCard',
-  'wechat',
-  'qq',
-  'hometown',
-  'emergencyContact',
-  'emergencyPhone',
-  'englishLevel',
-  'ranking',
-  'fullTime',
-  'position',
-  'expectedCity',
-  'expectedSalary',
-  'availabilityDate',
-  'internshipDuration',
-  'jobType',
-  'portfolio',
-  'projectExp',
-  'awards',
-  'researchDirection',
-  'resumeId',
-]);
-
-/**
  * 把表单回来的 patch 合进已存 profile。
  *
- * 关键语义：**patch 里为 `undefined` 的键保留 base 原值**。
+ * 关键语义：**patch 里为 `undefined` 的键保留 base 原值**，而 `''` 代表「显式清空」。
+ * 借 meta.custom 承载的结构化字段走 `structuredStr` 读，「键存在但为空」于是翻译成 `''`。
  * `cnProfileDataFromResume` 对「表单不拥有的字段」（民族/政治面貌/身份证号/籍贯/
  * 微信/QQ/紧急联系人/英语水平/排名/培养方式…）只能吐出 `undefined`，早期实现直接
  * `{...profile, ...patch}` 整组覆盖，保存一次就把这些字段清空。空字符串 `''` 仍然
@@ -263,7 +257,7 @@ export function cnProfileDataFromResume(resume: unknown): CnProfileData {
   for (const [key, value] of Object.entries(custom)) {
     // 反向映射用这批 key 承载 CnProfile 的结构化字段（见 resumeFromCnProfile 的 extra），
     // 它们不是用户自定义的「问题 -> 答案」，回灌进 custom 会让扩展字段编辑器塞满噪音。
-    if (RESERVED_CUSTOM_KEYS.has(key)) {
+    if (isReservedCustomKey(key)) {
       continue;
     }
     const text = str(value);
@@ -271,6 +265,10 @@ export function cnProfileDataFromResume(resume: unknown): CnProfileData {
       customAnswers[key] = text;
     }
   }
+
+  // jobType 要过枚举映射，而 mapEnum 把空串当无值；显式清空必须在这里短路，
+  // 否则「清空工作性质」会被 mapEnum 悄悄吞掉。
+  const customJobType = structuredStr(custom, 'jobType');
 
   return {
     basic: {
@@ -281,15 +279,15 @@ export function cnProfileDataFromResume(resume: unknown): CnProfileData {
       email: str(basics.email) ?? '',
       city: str(location.city),
       address: str(location.address),
-      nation: str(custom.nation),
-      politicalStatus: str(custom.politicalStatus),
-      idCard: str(custom.idCard),
-      wechat: str(custom.wechat),
-      qq: str(custom.qq),
-      hometown: str(custom.hometown),
-      emergencyContact: str(custom.emergencyContact),
-      emergencyPhone: str(custom.emergencyPhone),
-      englishLevel: str(custom.englishLevel),
+      nation: structuredStr(custom, 'nation'),
+      politicalStatus: structuredStr(custom, 'politicalStatus'),
+      idCard: structuredStr(custom, 'idCard'),
+      wechat: structuredStr(custom, 'wechat'),
+      qq: structuredStr(custom, 'qq'),
+      hometown: structuredStr(custom, 'hometown'),
+      emergencyContact: structuredStr(custom, 'emergencyContact'),
+      emergencyPhone: structuredStr(custom, 'emergencyPhone'),
+      englishLevel: structuredStr(custom, 'englishLevel'),
     },
     education: {
       school: str(education.institution) ?? str(education.school) ?? '',
@@ -298,22 +296,28 @@ export function cnProfileDataFromResume(resume: unknown): CnProfileData {
       enrollmentDate: str(education.startDate),
       graduationDate: str(education.endDate),
       gpa: str(education.score) ?? str(education.gpa),
-      ranking: str(custom.ranking),
-      fullTime: str(custom.fullTime),
+      ranking: structuredStr(custom, 'ranking'),
+      fullTime: structuredStr(custom, 'fullTime'),
     },
     intention: {
       position: str(basics.label) ?? str(custom.position),
-      expectedCity: str(custom.expectedCity) ?? str(custom.preferredLocation),
-      expectedSalary: str(basics.expectedSalary) ?? str(custom.expectedSalary) ?? str(custom.salaryExpectation),
-      availability: str(basics.availabilityDate) ?? str(custom.availabilityDate),
-      internshipDuration: str(custom.internshipDuration),
-      jobType: mapEnum(basics.employmentType ?? basics.jobType ?? custom.jobType, JOB_TYPE_TO_CN),
+      expectedCity: structuredStr(custom, 'expectedCity') ?? structuredStr(custom, 'preferredLocation'),
+      expectedSalary:
+        str(basics.expectedSalary) ??
+        structuredStr(custom, 'expectedSalary') ??
+        structuredStr(custom, 'salaryExpectation'),
+      availability: str(basics.availabilityDate) ?? structuredStr(custom, 'availabilityDate'),
+      internshipDuration: structuredStr(custom, 'internshipDuration'),
+      jobType:
+        customJobType === ''
+          ? ''
+          : mapEnum(basics.employmentType ?? basics.jobType ?? customJobType, JOB_TYPE_TO_CN),
     },
     links: {
       github,
       linkedin,
       blog: str(basics.url),
-      portfolio: str(custom.portfolio),
+      portfolio: structuredStr(custom, 'portfolio'),
     },
     texts: {
       selfIntro: str(basics.summary),
@@ -321,7 +325,7 @@ export function cnProfileDataFromResume(resume: unknown): CnProfileData {
       // 项目/获奖走结构化段落（projects / awards），旧数据回落到 meta.custom。
       projectExp: joinProjectEntries(root.projects) ?? str(custom.projectExp),
       awards: joinAwardEntries(root.awards) ?? str(custom.awards),
-      researchDirection: str(custom.researchDirection),
+      researchDirection: structuredStr(custom, 'researchDirection'),
     },
     attachments: {
       resumeId: str(custom.resumeId),

@@ -289,13 +289,18 @@ options:
       version: 版本
       lastModified: 最后修改时间
       custom:
-        heading: 扩展字段
-        description: 存放 JSON Resume 没有对应槽位的值（民族 / 政治面貌 / 身份证号 等），以及你自定义的「页面问题 → 答案」兜底。键会直接和表单标签比对。
+        description: 自定义的「页面问题 → 答案」兜底：页面标签里包含该键名时就用这个答案兜底，所以键要写得像表单标签本身（至少 2 个字符）。
         add: 添加字段
-        empty: 暂无扩展字段。
+        empty: 暂无自定义问答。
         key: 问题 / 字段名
         value: 答案
         remove: 删除字段
+        customHeading: 自定义问答
+        structuredHeading: 中文校招字段
+        structuredDescription: 档案里已保存的校招字段（民族 / 籍贯 / 英语水平 等）。键名由系统固定，直接改值即可；清空某项并保存就会把它删掉。
+        structuredEmpty: 这份档案里还没有这些字段，可从下方选择补充。
+        structuredAdd: 补充字段
+        structuredAddPlaceholder: 选择要补充的字段
     actions:
       reset: 重置修改
       saving: 正在保存…
@@ -513,6 +518,7 @@ slots:
   awards: 获奖情况
   researchDirection: 研究方向
   hobbies: 兴趣爱好
+  portfolio: 作品集
 overlay:
   prompt:
     heading: 推荐值

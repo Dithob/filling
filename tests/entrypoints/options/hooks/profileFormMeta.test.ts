@@ -47,6 +47,26 @@ describe('customEntriesToRecord', () => {
     const record = { 政治面貌: '中共党员', 是否服从调剂: '是' };
     expect(customEntriesToRecord(parseCustomEntries(record))).toEqual(record);
   });
+
+  it('丢弃编辑器里隐藏的保留键（它们的值另有结构化通道）', () => {
+    expect(
+      customEntriesToRecord([
+        { key: 'position', value: '算法工程师' },
+        { key: 'projectExp', value: '推荐系统' },
+        { key: 'awards', value: '国家奖学金' },
+        { key: 'resumeId', value: 'resume-1' },
+        { key: 'hometown', value: '浙江宁波' },
+      ]),
+    ).toEqual({ hometown: '浙江宁波' });
+  });
+
+  it('可编辑的保留键即使为空也写出，交给桥接层判断是「无值」还是「清空」', () => {
+    expect(customEntriesToRecord([{ key: 'englishLevel', value: '' }])).toEqual({
+      englishLevel: '',
+    });
+    // 用户自定义问答里的空值仍然丢弃，免得写出一堆没有答案的兜底项
+    expect(customEntriesToRecord([{ key: '是否服从调剂', value: '' }])).toEqual({});
+  });
 });
 
 describe('mergeCustomEntries', () => {

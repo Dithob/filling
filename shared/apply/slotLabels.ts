@@ -1,4 +1,5 @@
 import type { FieldSlot } from './slotTypes';
+import { STRUCTURED_FIELD_SLOTS, isReservedCustomKey } from '../schema/reservedCustomKeys';
 
 export function formatSlotLabel(slot: FieldSlot): string {
   switch (slot) {
@@ -106,4 +107,24 @@ export function formatSlotLabel(slot: FieldSlot): string {
     default:
       return i18n.t('slots.name');
   }
+}
+
+/**
+ * `meta.custom` 里的保留键在设置页里的展示名；非保留键返回 undefined
+ * （调用方应把它当用户自己写的问答，原样显示键名）。
+ *
+ * 不认识的槽位一律返回 undefined，**不要**回落到 `formatSlotLabel`：
+ * 它的 `default` 分支会给出「姓名」，把作品集之类的字段标成姓名比不标更糟。
+ */
+export function formatCustomFieldLabel(key: string): string | undefined {
+  if (!isReservedCustomKey(key)) {
+    return undefined;
+  }
+  // 作品集在填表时映射到 website 槽位（apply/profile.ts），展示名要单独给一条，
+  // 不能借 website 的「个人网站」。
+  if (key.trim() === 'portfolio') {
+    return i18n.t('slots.portfolio');
+  }
+  const slot = STRUCTURED_FIELD_SLOTS[key.trim()];
+  return slot ? formatSlotLabel(slot) : undefined;
 }

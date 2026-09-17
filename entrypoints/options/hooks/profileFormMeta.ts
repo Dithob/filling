@@ -4,6 +4,11 @@
  * 单独成模块是为了能在 node 环境下直接单测：ProfileForm 本身依赖 React/Mantine，
  * 而这几个转换是「中文专属字段会不会被保存清空」的关键路径。
  */
+import {
+  isEditorHiddenKey,
+  isReservedCustomKey,
+} from '../../../shared/schema/reservedCustomKeys';
+
 export interface CustomEntry {
   key: string;
   value: string;
@@ -29,13 +34,26 @@ export function parseCustomEntries(value: unknown): CustomEntry[] {
     .filter((entry) => entry.key.length > 0 && entry.value.length > 0);
 }
 
-/** 编辑器键值对 -> meta.custom（Record）；空键/空值丢弃，避免写出无意义的兜底项。 */
+/**
+ * 编辑器键值对 -> meta.custom（Record）。
+ *
+ * 丢弃三类：空键、编辑器里隐藏的保留键、空值。
+ *
+ * 隐藏键（`position` / `projectExp` / `awards` / `resumeId`）必须拦在这里：它们的值另有
+ * 结构化通道（`basics.label` / `projects` / `awards` / `attachments`），写回 meta.custom
+ * 只会让「改了不生效」看起来像是生效了。
+ */
 export function customEntriesToRecord(entries: CustomEntry[] | undefined): Record<string, string> {
   const record: Record<string, string> = {};
   for (const entry of entries ?? []) {
     const key = entry?.key?.trim() ?? '';
     const value = entry?.value?.trim() ?? '';
-    if (!key || !value) {
+    if (!key || isEditorHiddenKey(key)) {
+      continue;
+    }
+    // 可编辑的保留键即使为空也写出：它是桥接层写回结构化字段的唯一通道，
+    // 值本身为空时由桥接层决定是「无值」还是「显式清空」。
+    if (!value && !isReservedCustomKey(key)) {
       continue;
     }
     record[key] = value;
