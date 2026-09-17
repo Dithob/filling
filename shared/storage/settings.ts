@@ -6,8 +6,11 @@ export const OPENAI_DEFAULT_BASE_URL = 'https://api.openai.com';
 export const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
 
 const DEFAULT_SETTINGS: AppSettings = {
+  // AI is opt-in. Field matching and filling are fully local (see the field
+  // dictionary), so a fresh install must not push the user into downloading
+  // Gemini Nano before they can do anything.
   provider: {
-    kind: 'on-device',
+    kind: 'none',
   },
   adapters: getAllAdapterIds(),
   autoFallback: 'skip',
@@ -44,7 +47,7 @@ export async function getSettings(): Promise<AppSettings> {
     };
   }
   return {
-    provider: settings.provider,
+    provider: normalizeProvider(settings.provider),
     adapters,
     autoFallback,
     highlightOverlay,
@@ -108,5 +111,10 @@ function normalizeProvider(provider: ProviderConfig): ProviderConfig {
   if (provider.kind === 'gemini') {
     return normalizeGeminiProvider(provider);
   }
-  return provider;
+  // 'none' and 'on-device' carry no extra fields; unknown kinds fall back to
+  // 'none' so a stale/手工改坏的 storage value can never opt a user into AI.
+  if (provider.kind === 'on-device') {
+    return provider;
+  }
+  return { kind: 'none' };
 }

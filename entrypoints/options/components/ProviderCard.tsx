@@ -1,5 +1,6 @@
 import { Button, Group, Paper, PasswordInput, Progress, Radio, Stack, Text, TextInput, ThemeIcon } from '@mantine/core';
 import type { LucideIcon } from 'lucide-react';
+import type { ProviderKind } from '../hooks/useProviderSettings';
 
 export interface OnDeviceSupportProps {
   note?: string | null;
@@ -14,8 +15,8 @@ interface ProviderCardProps {
   helper: string;
   headingIcon?: LucideIcon;
   headingIconColor?: string;
-  providerLabels: Record<'on-device' | 'openai' | 'gemini', string>;
-  selectedProvider: 'on-device' | 'openai' | 'gemini';
+  providerLabels: Record<ProviderKind, string>;
+  selectedProvider: ProviderKind;
   canUseOnDevice: boolean;
   onDeviceSupport?: OnDeviceSupportProps;
   openAi: {
@@ -42,7 +43,7 @@ interface ProviderCardProps {
     onApiKeyChange: (value: string) => void;
     onModelChange: (value: string) => void;
   };
-  onProviderChange: (value: 'on-device' | 'openai' | 'gemini') => void | Promise<void>;
+  onProviderChange: (value: ProviderKind) => void | Promise<void>;
 }
 
 export function ProviderCard({
@@ -86,7 +87,7 @@ export function ProviderCard({
 
         <Radio.Group
           value={selectedProvider}
-          onChange={(value) => onProviderChange(value as 'on-device' | 'openai' | 'gemini')}
+          onChange={(value) => onProviderChange(value as ProviderKind)}
         >
           <Stack gap={6}>
             <Radio

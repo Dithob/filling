@@ -40,6 +40,8 @@ options:
     refresh: Refresh
     openai: OpenAI
     gemini: Gemini
+    none: No AI (recommended)
+    noneHint: Field matching and filling run fully on-device from your field dictionary — no model download, no API key, no network.
     apiKey: API key
     model: Model
     apiBaseUrl: API base URL

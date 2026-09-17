@@ -1,6 +1,15 @@
 import type { CnProfile } from './schema/cnProfile';
 
-export type ProviderKind = 'on-device' | 'openai' | 'gemini';
+export type ProviderKind = 'none' | 'on-device' | 'openai' | 'gemini';
+
+/**
+ * 「不使用 AI」是默认档：字段匹配与填值全部由本地字段字典完成，不需要任何模型。
+ * 需要 AI 的能力（识别未命中字段、生成开放题文案、PDF 智能解析）在选中它时
+ * 要么隐藏、要么提示用户去开一个 provider。
+ */
+export interface NoneProviderConfig {
+  kind: 'none';
+}
 
 export interface OnDeviceProviderConfig {
   kind: 'on-device';
@@ -19,9 +28,14 @@ export interface GeminiProviderConfig {
   model: string;
 }
 
-export type ProviderConfig = OnDeviceProviderConfig | OpenAIProviderConfig | GeminiProviderConfig;
+export type ProviderConfig =
+  | NoneProviderConfig
+  | OnDeviceProviderConfig
+  | OpenAIProviderConfig
+  | GeminiProviderConfig;
 
 export type ProviderSnapshot =
+  | NoneProviderConfig
   | OnDeviceProviderConfig
   | {
       kind: 'openai';

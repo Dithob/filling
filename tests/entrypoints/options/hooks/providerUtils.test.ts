@@ -47,6 +47,37 @@ describe('buildAppSettings', () => {
     expect(settings.provider).toEqual({ kind: 'on-device' });
     expect(settings.adapters).toHaveLength(2);
   });
+
+  it('persists an explicit no-AI provider without touching other settings', () => {
+    const settings = buildAppSettings(
+      'none',
+      { apiKey: 'sk-kept', model: 'gpt-mini', apiBaseUrl: 'https://custom' },
+      { apiKey: 'gemini-kept', model: 'gemini-2.5-flash' },
+      ['adapter-a'],
+      'skip',
+      true,
+      'emptyOnly',
+    );
+
+    expect(settings.provider).toEqual({ kind: 'none' });
+    expect(settings.adapters).toEqual(['adapter-a']);
+  });
+
+  it('degrades an unknown provider kind to no-AI instead of on-device', () => {
+    // Guards against a stale storage value silently re-arming the Gemini Nano
+    // download prompt after this fork made AI opt-in.
+    const settings = buildAppSettings(
+      'stale-value' as never,
+      { apiKey: '', model: '', apiBaseUrl: '' },
+      { apiKey: '', model: '' },
+      ['adapter-a'],
+      'skip',
+      true,
+      'emptyOnly',
+    );
+
+    expect(settings.provider).toEqual({ kind: 'none' });
+  });
 });
 
 describe('deriveOnDeviceSupport', () => {

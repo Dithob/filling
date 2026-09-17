@@ -11,7 +11,7 @@ import type { AdapterItem } from '../components/AdaptersCard';
 import type { OnDeviceSupportProps } from '../components/ProviderCard';
 import { buildAppSettings, deriveOnDeviceSupport } from './providerUtils';
 
-export type ProviderKind = 'on-device' | 'openai' | 'gemini';
+export type ProviderKind = 'none' | 'on-device' | 'openai' | 'gemini';
 
 export interface OpenAiConfigState {
   apiKey: string;
@@ -75,7 +75,7 @@ export function useProviderSettings({
     [adapters],
   );
 
-  const [selectedProvider, setSelectedProvider] = useState<ProviderKind>('on-device');
+  const [selectedProvider, setSelectedProvider] = useState<ProviderKind>('none');
   const [availability, setAvailability] = useState<LanguageModelAvailability>('unavailable');
   const [onDeviceDownloadState, setOnDeviceDownloadState] = useState<OnDeviceDownloadState>({
     phase: 'idle',
@@ -114,8 +114,10 @@ export function useProviderSettings({
           apiKey: loaded.provider.apiKey ?? '',
           model: loaded.provider.model?.trim().length ? loaded.provider.model : GEMINI_DEFAULT_MODEL,
         });
-      } else {
+      } else if (loaded.provider.kind === 'on-device') {
         setSelectedProvider('on-device');
+      } else {
+        setSelectedProvider('none');
       }
       setActiveAdapters(loaded.adapters.length > 0 ? loaded.adapters : defaultAdapterIds);
       setAutoFallback(loaded.autoFallback ?? 'skip');
@@ -229,8 +231,11 @@ export function useProviderSettings({
         await saveSettings(next);
         return;
       }
-    const next = buildAppSettings(
-        'on-device',
+      // Remaining values: 'none' and 'on-device', neither of which carries
+      // extra config. Using `value` (not a hardcoded 'on-device') is what lets
+      // the user switch AI off again.
+      const next = buildAppSettings(
+        value,
         openAiConfig,
         geminiConfig,
         resolvedAdapters,
@@ -571,6 +576,12 @@ export function useProviderSettings({
   );
 
   const providerConfigured = useMemo(() => {
+    // `none` is a valid, fully-working configuration — but it means "AI is not
+    // available". Every AI affordance should check this and either hide itself
+    // or explain what to enable; nothing on the local matching path may block.
+    if (selectedProvider === 'none') {
+      return false;
+    }
     if (selectedProvider === 'on-device') {
       return availability === 'available' || onDeviceDownloadState.phase === 'complete';
     }

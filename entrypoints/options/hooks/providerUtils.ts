@@ -39,8 +39,19 @@ export function buildAppSettings(
       fillMode,
     };
   }
+  if (kind === 'on-device') {
+    return {
+      provider: { kind: 'on-device' },
+      adapters,
+      autoFallback,
+      highlightOverlay,
+      fillMode,
+    };
+  }
+  // 'none' (and anything unrecognised) means "no AI". Never fall back to
+  // 'on-device' here: doing so would silently re-arm the Gemini Nano prompt.
   return {
-    provider: { kind: 'on-device' },
+    provider: { kind: 'none' },
     adapters,
     autoFallback,
     highlightOverlay,

@@ -40,6 +40,8 @@ options:
     refresh: 刷新
     openai: OpenAI
     gemini: Gemini
+    none: 不使用 AI（推荐）
+    noneHint: 字段匹配与填表完全在本地由字段字典完成——不下载模型、不需要 API 密钥、不联网。
     apiKey: API 密钥
     model: 模型
     apiBaseUrl: API 基础地址

@@ -31,6 +31,11 @@ export async function invokeWithProvider(
   const { onDeviceTemplate, ...baseOptions } = options;
 
   switch (provider.kind) {
+    // `none` is the default setting: the user has not opted into AI. Callers
+    // already treat NoProviderConfiguredError as "fall back to the local
+    // dictionary / hide the AI affordance", so reuse it here.
+    case 'none':
+      throw new NoProviderConfiguredError();
     case 'on-device':
       return promptOnDevice(messages, { ...baseOptions, template: onDeviceTemplate });
     case 'openai':

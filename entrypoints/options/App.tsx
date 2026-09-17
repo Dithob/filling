@@ -46,7 +46,7 @@ import {
   createEmptyResumeFormValues,
   type ResumeFormValues,
 } from './components/ProfileForm';
-import { useProviderSettings } from './hooks/useProviderSettings';
+import { useProviderSettings, type ProviderKind } from './hooks/useProviderSettings';
 import { useMemoryStore } from './hooks/useMemoryStore';
 import { useProfilesManager } from './hooks/useProfilesManager';
 
@@ -71,7 +71,8 @@ export default function App() {
   const advancedSectionRef = useRef<HTMLDivElement | null>(null);
   const { t } = i18n;
   const translate = t as unknown as (key: string, substitutions?: unknown) => string;
-  const providerLabels: Record<'on-device' | 'openai' | 'gemini', string> = {
+  const providerLabels: Record<ProviderKind, string> = {
+    none: t('options.provider.none'),
     'on-device': t('options.provider.onDevice'),
     openai: t('options.provider.openai'),
     gemini: t('options.provider.gemini'),
