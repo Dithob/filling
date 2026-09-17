@@ -1,11 +1,11 @@
 app:
-  name: Fillo
+  name: 字段簿
 contextMenu:
-  fill: 使用 Fillo 自动填写…
+  fill: 使用字段簿自动填写…
 options:
   loading: 正在加载设置…
-  title: Fillo 设置
-  description: Fillo 会让你的求职流程随时准备就绪。所有数据都存储在浏览器本地。
+  title: 字段簿设置
+  description: 字段簿会让你的求职流程随时准备就绪。所有数据都存储在浏览器本地。
   cnProfileJson:
     title: 信息文件 (profile.json)
     description: 所有字段都维护在一份 JSON 文件里，可在任意机器上导入带走。
@@ -23,8 +23,8 @@ options:
     title: 快速导航
     helper: 点击任意项目即可跳到对应的设置区块。
   gettingStarted:
-    helper: 按照下方步骤完成 Fillo 的初始设置。
-    tip: '提示：将 Fillo 固定到浏览器工具栏，随时一键开启自动填表。'
+    helper: 按照下方步骤完成字段簿的初始设置。
+    tip: '提示：将字段簿固定到浏览器工具栏，随时一键开启自动填表。'
   checklist:
     provider:
       title: 连接 AI 提供方
@@ -43,10 +43,10 @@ options:
     apiKey: API 密钥
     model: 模型
     apiBaseUrl: API 基础地址
-    helper: 选择 Fillo 用来解析简历并驱动自动填表的模型。
+    helper: 选择字段簿用来解析简历并驱动自动填表的模型。
   adapters:
     heading: 字段匹配适配器
-    description: 选择 Fillo 需要启用的字段标签适配器。所有匹配均在本地完成。
+    description: 选择字段簿需要启用的字段标签适配器。所有匹配均在本地完成。
     items:
       en_default:
         name: 英文（默认）
@@ -114,7 +114,7 @@ options:
       currentFile: '文件：$1（$2 字节）'
       rawSummary: '提取文本：$1 个字符'
       modalTitle: 导入 PDF
-      modalDescription: 请选择 Fillo 应如何处理所选 PDF。
+      modalDescription: 请选择字段簿应如何处理所选 PDF。
       parseAction: 自动解析
       storeAction: 仅保存文件
       parseAgain: 重新运行 AI 解析
@@ -351,8 +351,8 @@ options:
       description: 请选择列表中的简历，或新建一份开始编辑。
       create: 新建简历
 popup:
-  title: Fillo 简历
-  description: 在 Fillo 中导入一次，之后可在任何应用流程中重复使用。
+  title: 字段簿简历
+  description: 在字段簿中导入一次，之后可在任何应用流程中重复使用。
   loading: 正在加载简历…
   error: 加载简历失败（$1）
   empty: 尚未保存任何简历，请先在工作台导入 PDF。
@@ -382,7 +382,7 @@ popup:
     noStructured: 尚未保存结构化简历，请先在工作台运行 AI 解析。
   overlay:
     toggleLabel: 在此标签页显示提示覆盖层
-    toggleDescription: 允许 Fillo 监听获得焦点的输入框并提供提示，直到关闭该标签页。
+    toggleDescription: 允许字段簿监听获得焦点的输入框并提供提示，直到关闭该标签页。
     toggleUnavailable: 当前页面暂不支持提示覆盖层。
     profileSelectLabel: 选择用于提示的简历
     profileSelectPlaceholder: 请选择简历
@@ -390,8 +390,8 @@ popup:
     profileSelectEmpty: 请先在工作台导入简历以启用此处的建议。
 sidepanel:
   permission:
-    title: 允许 Fillo 扫描此页面吗？
-    body: Fillo 会扫描当前页面以识别申请表单字段，并在提供建议前将其匹配到你的简历信息。
+    title: 允许字段簿扫描此页面吗？
+    body: 字段簿会扫描当前页面以识别申请表单字段，并在提供建议前将其匹配到你的简历信息。
     note: 只有在你批准后我们才会读取页面内容；若暂时不想授权，请关闭侧边栏。
     allow: 允许扫描
     revoke: 停止扫描
@@ -619,10 +619,10 @@ overlay:
     fill: 填写
     skip: 跳过
     close: 关闭提示
-    disableHint: 如需关闭提示浮层，请在 Fillo 弹窗中切换开关。
+    disableHint: 如需关闭提示浮层，请在字段簿弹窗中切换开关。
     disableHintAria: 了解如何关闭提示浮层
 onboarding:
-  title: Fillo 工作台
+  title: 字段簿工作台
   description: 在同一位置导入简历、配置 AI 服务并优化自动填充。
   tabs:
     profiles: 档案管理

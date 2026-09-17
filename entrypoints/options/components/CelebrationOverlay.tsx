@@ -63,21 +63,21 @@ export function CelebrationOverlay({
 
   return (
     <Box
-      className="fillo-celebration"
+      className="fieldbook-celebration"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="fillo-celebration-title"
+      aria-labelledby="fieldbook-celebration-title"
       onClick={(event) => {
         if (event.target === event.currentTarget) {
           onClose();
         }
       }}
     >
-      <Box className="fillo-celebration__confetti">
+      <Box className="fieldbook-celebration__confetti">
         {confettiPieces.map((piece) => (
           <Box
             key={piece.id}
-            className="fillo-confetto"
+            className="fieldbook-confetto"
             style={
               {
                 left: `${piece.left}%`,
@@ -89,9 +89,9 @@ export function CelebrationOverlay({
           />
         ))}
       </Box>
-      <Paper className="fillo-celebration__card" shadow="xl" radius="lg" p="xl">
+      <Paper className="fieldbook-celebration__card" shadow="xl" radius="lg" p="xl">
         <Stack gap="sm" align="center">
-          <Title id="fillo-celebration-title" order={3}>
+          <Title id="fieldbook-celebration-title" order={3}>
             {title}
           </Title>
           <Text fz="sm" c="dimmed">

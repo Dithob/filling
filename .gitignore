@@ -17,6 +17,9 @@ web-ext.config.ts
 # WorkBuddy workspace data (not part of the extension source)
 .workbuddy
 
+# Internal planning docs (priorities, TODOs, risks — not for the public repo)
+.plan/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

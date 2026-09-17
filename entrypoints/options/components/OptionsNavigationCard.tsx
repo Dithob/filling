@@ -37,7 +37,7 @@ export function OptionsNavigationCard({
       className={className}
       style={style}
     >
-      <Stack gap="md" className="fillo-options__toc-content">
+      <Stack gap="md" className="fieldbook-options__toc-content">
         <Stack gap={4}>
           <Group gap="xs" align="center">
             <ThemeIcon size={32} radius="xl" variant="light" color="brand">
@@ -60,7 +60,7 @@ export function OptionsNavigationCard({
                 type="button"
                 onClick={() => onNavigate(link.id)}
                 style={{ textAlign: 'left' }}
-                className="fillo-options__toc-link"
+                className="fieldbook-options__toc-link"
                 leftSection={
                   <ThemeIcon size={30} radius="lg" variant="light" color={link.color}>
                     <Icon size={16} strokeWidth={2} />

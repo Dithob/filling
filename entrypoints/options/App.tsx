@@ -395,17 +395,17 @@ export default function App() {
   const sectionClassName = useCallback(
     (id: string) =>
       highlightedSection === id
-        ? 'fillo-options__section fillo-options__section--highlighted'
-        : 'fillo-options__section',
+        ? 'fieldbook-options__section fieldbook-options__section--highlighted'
+        : 'fieldbook-options__section',
     [highlightedSection],
   );
 
   return (
     <>
-      <Container size="xl" py="xl" className="fillo-options__container">
+      <Container size="xl" py="xl" className="fieldbook-options__container">
         <Stack gap="xl">
           <Group align="flex-start" justify="space-between" gap="xl" wrap="wrap">
-            <Stack gap={4} className="fillo-options__intro">
+            <Stack gap={4} className="fieldbook-options__intro">
               <Title order={1}>{t('options.title')}</Title>
               <Text c="dimmed">{t('options.description')}</Text>
             </Stack>
@@ -414,7 +414,7 @@ export default function App() {
 
           <Flex gap="xl" align="flex-start" direction={{ base: 'column', md: 'row' }}>
           <OptionsNavigationCard
-            className="fillo-options__toc fillo-options__toc-sticky"
+            className="fieldbook-options__toc fieldbook-options__toc-sticky"
             title={t('options.toc.title')}
             helper={t('options.toc.helper')}
             links={navLinks}
@@ -728,9 +728,9 @@ export default function App() {
         }}
       >
         {workspaceOpen && selectedProfile ? (
-          <Box className={`fillo-workspace${isWideWorkspace ? '' : ' fillo-workspace--compact'}`}>
+          <Box className={`fieldbook-workspace${isWideWorkspace ? '' : ' fieldbook-workspace--compact'}`}>
             {!isWideWorkspace && (
-              <Box className="fillo-workspace__preview-toggle">
+              <Box className="fieldbook-workspace__preview-toggle">
                 <Tooltip label={t('options.profileForm.preview.openPreviewDrawer')} withArrow>
                   <ActionIcon
                     variant="light"
@@ -744,15 +744,15 @@ export default function App() {
               </Box>
             )}
             <Box
-              className={`fillo-workspace__layout${isWideWorkspace ? '' : ' fillo-workspace__layout--single'}`}
+              className={`fieldbook-workspace__layout${isWideWorkspace ? '' : ' fieldbook-workspace__layout--single'}`}
             >
-              <Box className="fillo-workspace__form">
+              <Box className="fieldbook-workspace__form">
                 <ScrollArea style={{ flex: 1, minHeight: 0 }} type="auto">
                   <ProfileForm {...profileFormProps} />
                 </ScrollArea>
               </Box>
               {isWideWorkspace ? (
-                <Box className="fillo-workspace__preview">
+                <Box className="fieldbook-workspace__preview">
                   <ResumePreviewPane
                     profileId={selectedProfile.id}
                     file={selectedProfile.sourceFile}

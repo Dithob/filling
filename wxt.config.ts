@@ -15,13 +15,13 @@ export default defineConfig({
   }),
   manifest: {
     default_locale: 'en',
-    name: 'Fillo',
-    description: 'Turn your resume into effortless job applications. Fillo keeps your experience at your fingertips and lands applications in just a few clicks.',
+    name: '字段簿 FieldBook',
+    description: '用可积累、可编辑的字段字典确定性填充国内校招表单。全部匹配在本地完成，无需 AI。',
     version: '0.1.0',
     manifest_version: 3,
-    action: {
-      default_title: 'Fillo',
-    },
+    // NOTE: the toolbar tooltip is NOT set here. WXT overwrites
+    // `action.default_title` with the `<title>` of entrypoints/popup/index.html
+    // (see wxt/dist/core/utils/manifest.mjs), so edit that HTML instead.
     options_page: 'options.html',
     permissions: ['storage', 'unlimitedStorage', 'activeTab', 'sidePanel', 'contextMenus', 'tabs'],
     host_permissions: [

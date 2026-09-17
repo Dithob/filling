@@ -1,6 +1,6 @@
 {
-  "name": "fillo",
-  "description": "Tab-complete any job form.",
+  "name": "fieldbook",
+  "description": "字段簿 — 用字段字典确定性填充国内校招表单的浏览器扩展。",
   "private": true,
   "version": "0.1.0",
   "license": "MIT",

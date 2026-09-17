@@ -28,7 +28,7 @@
  */
 const fs = require('node:fs');
 
-const PATCHED = Symbol.for('fillo.rmdirSemantics.restored');
+const PATCHED = Symbol.for('fieldbook.rmdirSemantics.restored');
 if (!fs[PATCHED]) {
   fs[PATCHED] = true;
 

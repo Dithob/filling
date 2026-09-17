@@ -1,13 +1,13 @@
-.fillo-options__container {
+.fieldbook-options__container {
   min-height: 100vh;
 }
 
-.fillo-options__intro {
+.fieldbook-options__intro {
   flex: 1 1 320px;
   min-width: 240px;
 }
 
-.fillo-celebration {
+.fieldbook-celebration {
   position: fixed;
   inset: 0;
   display: grid;
@@ -17,63 +17,63 @@
   padding: 24px;
 }
 
-.fillo-celebration__confetti {
+.fieldbook-celebration__confetti {
   position: absolute;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
 }
 
-.fillo-confetto {
+.fieldbook-confetto {
   position: absolute;
   top: -10px;
   width: 8px;
   height: 14px;
   border-radius: 2px;
-  animation: fillo-confetti-fall 1.8s linear forwards;
+  animation: fieldbook-confetti-fall 1.8s linear forwards;
 }
 
-.fillo-celebration__card {
+.fieldbook-celebration__card {
   position: relative;
   width: min(320px, 90vw);
   text-align: center;
-  animation: fillo-celebration-pop 0.18s ease-out;
+  animation: fieldbook-celebration-pop 0.18s ease-out;
 }
 
-.fillo-options__toc {
+.fieldbook-options__toc {
   position: relative;
   border: 1px solid var(--mantine-color-gray-3);
   background-color: var(--mantine-color-body);
 }
 
-.fillo-options__toc-sticky {
+.fieldbook-options__toc-sticky {
   position: sticky;
   top: 2rem;
 }
 
-.fillo-options__toc-content {
+.fieldbook-options__toc-content {
   position: relative;
   z-index: 1;
 }
 
-.fillo-options__toc-link {
+.fieldbook-options__toc-link {
   border-radius: 12px;
   padding-block: 8px;
   transition: background-color 120ms ease, transform 120ms ease;
 }
 
-.fillo-options__toc-link:hover {
+.fieldbook-options__toc-link:hover {
   background-color: var(--mantine-color-gray-0);
   transform: translateX(2px);
 }
 
-.fillo-options__section {
+.fieldbook-options__section {
   position: relative;
   border-radius: 12px;
   z-index: 0;
 }
 
-.fillo-options__section::after {
+.fieldbook-options__section::after {
   content: '';
   position: absolute;
   inset: -8px;
@@ -85,11 +85,11 @@
   z-index: -1;
 }
 
-.fillo-options__section--highlighted::after {
+.fieldbook-options__section--highlighted::after {
   background-color: var(--mantine-color-brand-0);
 }
 
-.fillo-workspace {
+.fieldbook-workspace {
   flex: 1;
   min-height: 0;
   width: 100%;
@@ -97,7 +97,7 @@
   position: relative;
 }
 
-.fillo-workspace__layout {
+.fieldbook-workspace__layout {
   display: flex;
   flex-direction: row;
   gap: var(--mantine-spacing-xl);
@@ -106,36 +106,36 @@
   align-items: stretch;
 }
 
-.fillo-workspace__form,
-.fillo-workspace__preview {
+.fieldbook-workspace__form,
+.fieldbook-workspace__preview {
   display: flex;
   min-height: 0;
   min-width: 0;
   height: 100%;
 }
 
-.fillo-workspace__form {
+.fieldbook-workspace__form {
   flex: 0 1 560px;
   max-width: 600px;
   min-width: 320px;
   width: 100%;
 }
 
-.fillo-workspace__preview {
+.fieldbook-workspace__preview {
   flex: 1 1 0;
 }
 
-.fillo-workspace__layout--single {
+.fieldbook-workspace__layout--single {
   flex-direction: column;
 }
 
-.fillo-workspace--compact .fillo-workspace__form {
+.fieldbook-workspace--compact .fieldbook-workspace__form {
   flex: 1 1 auto;
   max-width: none;
   min-width: 0;
 }
 
-.fillo-workspace__preview-toggle {
+.fieldbook-workspace__preview-toggle {
   position: absolute;
   top: 0;
   right: 0;
@@ -146,7 +146,7 @@
   z-index: 2;
 }
 
-@keyframes fillo-celebration-pop {
+@keyframes fieldbook-celebration-pop {
   from {
     transform: scale(0.96);
     opacity: 0;
@@ -157,7 +157,7 @@
   }
 }
 
-@keyframes fillo-confetti-fall {
+@keyframes fieldbook-confetti-fall {
   to {
     transform: translate3d(var(--tx, 0px), 110vh, 0) rotate(540deg);
     opacity: 0;

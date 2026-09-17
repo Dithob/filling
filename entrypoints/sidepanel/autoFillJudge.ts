@@ -104,7 +104,7 @@ function buildUserContent(payload: AutoFillPromptPayload): string {
   };
 
   const result = {
-    schema: 'fillo.autofill/v1',
+    schema: 'fieldbook.autofill/v1',
     round: payload.round,
     field: fieldSummary,
     availableKeys: payload.keys.map((key) => ({

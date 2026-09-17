@@ -1,11 +1,11 @@
-# 二开路线图：面向国内校招的简历自动填充
+# 字段簿 FieldBook · 二开路线图：面向国内校招的简历自动填充
 
-> 上游：[CoolSpring8/fillo](https://github.com/CoolSpring8/fillo)（MIT）。remote `upstream` 保留，便于同步上游修复。
+> 上游：[CoolSpring8/fillo](https://github.com/CoolSpring8/fillo)（MIT）。remote `upstream` 保留，便于 cherry-pick 上游修复。
 > 上游定位是海外 ATS（Greenhouse/Lever/Ashby/Workday），本分支改造目标：国内校招表单（Moka / 北森 / 大易 / 牛客 / 企业官网）+ 中文字段 + 简历附件上传 + 投递记录回写。
 
 ## 设计前提
 
-Fillo 用 `FieldSlot` 做中间层，DOM 匹配与 profile 取值解耦：
+字段簿用 `FieldSlot` 做中间层，DOM 匹配与 profile 取值解耦：
 
 ```
 页面字段 --adapters.ts(正则词典)--> FieldSlot --profile.ts(resolver)--> 具体值
