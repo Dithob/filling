@@ -1,19 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fakeBrowser } from 'wxt/testing';
+import { matchSlotWithAdapters } from '../../../shared/apply/adapters';
+import {
+  exportDictionary,
+  getDictionary,
+  hydrateDictionary,
+  importDictionary,
+  resetDictionary,
+  subscribeDictionary,
+  watchDictionaryStorage,
+} from '../../../shared/dictionary/store';
 
-const STORE_PATH = '../../../shared/dictionary/store';
-
-/** store 的状态是模块级的，每个用例都重新取一份模块，避免互相污染。 */
-async function freshStore() {
-  vi.resetModules();
-  return import(STORE_PATH);
-}
-
-/** 取一份「干净的匹配器」：走同样的模块图，但只读当前缓存。 */
-async function freshAdapters() {
-  return import('../../../shared/apply/adapters');
-}
-
+/**
+ * store 的状态是模块级的，所以隔离靠**显式重置**而不是 `vi.resetModules()`。
+ *
+ * 实测结论（别改回去）：`vi.resetModules()` 只对**字面量**说明符的 `import()`
+ * 生效。用 `const p = '...'; import(p)` 这种变量说明符时它不重建模块，于是
+ * store 与 adapters 共享同一个实例——那是巧合而不是设计，用例顺序一变就会崩，
+ * 而且拿不到类型（tsc 报 implicit any）。这里改成静态导入 + `resetDictionary()`
+ * 把状态推回内置字典，行为完全确定。
+ */
 const CUSTOM_DICTIONARY = {
   version: 1,
   adapters: [
@@ -21,7 +27,7 @@ const CUSTOM_DICTIONARY = {
       id: 'custom',
       label: '自定义词典',
       enabled: true,
-      // 「绝密暗号」在内置字典里没有任何模式命中，用它来判别到底用的是哪份字典。
+      // 「绝密暗号」在内置字典里没有任何模式命中，用它判别到底用的是哪份字典。
       patterns: { email: [{ match: '绝密暗号', mode: 'substring' }] },
     },
   ],
@@ -30,18 +36,19 @@ const CUSTOM_DICTIONARY = {
   options: { gender: ['男', '女'] },
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   fakeBrowser.reset();
+  // 清掉 storage 覆盖并把缓存重建成内置字典，让每个用例从同一个起点出发。
+  await resetDictionary();
 });
 
-describe('getDictionary 的初值', () => {
-  it('未水合时就能同步拿到内置字典，且标记为未定制', async () => {
-    const store = await freshStore();
-    const state = store.getDictionary();
+describe('getDictionary', () => {
+  it('可以同步调用，且回到内置字典时没有编译问题', () => {
+    const state = getDictionary();
 
+    expect(() => getDictionary()).not.toThrow();
     expect(state.customized).toBe(false);
     expect(state.adapters.map((a) => a.id)).toEqual(['en_default', 'zh_cn']);
-    // 内置字典是编译期就被编译好的，不该有水合期才暴露的问题
     expect(state.issues).toEqual([]);
     expect(state.options.gender).toEqual(['男', '女']);
   });
@@ -49,35 +56,32 @@ describe('getDictionary 的初值', () => {
 
 describe('hydrateDictionary', () => {
   it('storage 里没有覆盖时保持内置字典', async () => {
-    const store = await freshStore();
-    await store.hydrateDictionary();
+    await hydrateDictionary(true);
 
-    expect(store.getDictionary().customized).toBe(false);
-    expect(store.getDictionary().adapters.map((a) => a.id)).toEqual(['en_default', 'zh_cn']);
+    expect(getDictionary().customized).toBe(false);
+    expect(getDictionary().adapters.map((a) => a.id)).toEqual(['en_default', 'zh_cn']);
   });
 
-  it('storage 里有覆盖时用它，并且匹配真的走新字典', async () => {
+  it('storage 里有覆盖时用它，并且适配器那边真的看到新字典', async () => {
     await fakeBrowser.storage.local.set({ 'dictionary:v1': CUSTOM_DICTIONARY });
-    const store = await freshStore();
-    const { matchSlotWithAdapters } = await freshAdapters();
 
-    await store.hydrateDictionary();
+    await hydrateDictionary(true);
 
-    const state = store.getDictionary();
+    const state = getDictionary();
     expect(state.customized).toBe(true);
     expect(state.adapters.map((a) => a.id)).toEqual(['custom']);
+    // 这条断言是「模块级缓存确实被所有匹配调用方共享」的证据：
+    // matchSlotWithAdapters 在另一个模块里，它必须看到 store 水合出来的状态。
     expect(matchSlotWithAdapters('绝密暗号')).toBe('email');
-    // 内置的中文匹配器已经不在生效集合里了
     expect(matchSlotWithAdapters('姓名')).toBeNull();
   });
 
   it('storage 里是垃圾数据时整份退回内置，且不 reject', async () => {
     await fakeBrowser.storage.local.set({ 'dictionary:v1': 42 });
-    const store = await freshStore();
 
-    await expect(store.hydrateDictionary()).resolves.toBeTruthy();
+    await expect(hydrateDictionary(true)).resolves.toBeTruthy();
 
-    const state = store.getDictionary();
+    const state = getDictionary();
     expect(state.customized).toBe(false);
     expect(state.adapters.map((a) => a.id)).toEqual(['en_default', 'zh_cn']);
     expect(state.issues.length).toBeGreaterThan(0);
@@ -98,21 +102,32 @@ describe('hydrateDictionary', () => {
         ],
       },
     });
-    const store = await freshStore();
-    const { matchSlotWithAdapters } = await freshAdapters();
 
-    await store.hydrateDictionary();
+    await hydrateDictionary(true);
 
-    expect(store.getDictionary().issues.some((issue) => issue.adapterId === 'broken')).toBe(true);
+    expect(getDictionary().issues.some((issue) => issue.adapterId === 'broken')).toBe(true);
     // 坏的那条被跳过，好的那条仍然可以匹配
     expect(matchSlotWithAdapters('请填写校园邮箱', ['broken'])).toBe('email');
   });
 
-  it('重复调用只读一次 storage', async () => {
-    const store = await freshStore();
+  it('memo 命中时并发调用不再读 storage', async () => {
+    await hydrateDictionary(true);
     const getSpy = vi.spyOn(fakeBrowser.storage.local, 'get');
+    getSpy.mockClear();
 
-    await Promise.all([store.hydrateDictionary(), store.hydrateDictionary()]);
+    const [a, b] = await Promise.all([hydrateDictionary(), hydrateDictionary()]);
+
+    expect(getSpy).not.toHaveBeenCalled();
+    expect(a).toBe(b);
+    getSpy.mockRestore();
+  });
+
+  it('force 时重新读一次 storage', async () => {
+    await hydrateDictionary();
+    const getSpy = vi.spyOn(fakeBrowser.storage.local, 'get');
+    getSpy.mockClear();
+
+    await hydrateDictionary(true);
 
     expect(getSpy).toHaveBeenCalledTimes(1);
     getSpy.mockRestore();
@@ -121,78 +136,76 @@ describe('hydrateDictionary', () => {
 
 describe('watchDictionaryStorage', () => {
   it('storage 变化时热更新，并通知订阅者', async () => {
-    const store = await freshStore();
-    const { matchSlotWithAdapters } = await freshAdapters();
     const seen: boolean[] = [];
-    const unsubscribe = store.subscribeDictionary((state) => seen.push(state.customized));
-    const stop = store.watchDictionaryStorage();
+    const unsubscribe = subscribeDictionary((state) => seen.push(state.customized));
+    const stop = watchDictionaryStorage();
 
-    await fakeBrowser.storage.local.set({ 'dictionary:v1': CUSTOM_DICTIONARY });
-    await vi.waitFor(() => {
-      expect(matchSlotWithAdapters('绝密暗号')).toBe('email');
-    });
+    try {
+      await fakeBrowser.storage.local.set({ 'dictionary:v1': CUSTOM_DICTIONARY });
+      await vi.waitFor(() => {
+        expect(matchSlotWithAdapters('绝密暗号')).toBe('email');
+      });
+      expect(getDictionary().customized).toBe(true);
+      expect(seen.length).toBeGreaterThan(0);
 
-    expect(store.getDictionary().customized).toBe(true);
-    expect(seen.length).toBeGreaterThan(0);
-
-    // 删掉覆盖 -> 回到内置
-    await fakeBrowser.storage.local.remove('dictionary:v1');
-    await vi.waitFor(() => {
-      expect(store.getDictionary().customized).toBe(false);
-    });
-    expect(matchSlotWithAdapters('姓名')).toBe('name');
-
-    stop();
-    unsubscribe();
+      // 删掉覆盖 -> 回到内置
+      await fakeBrowser.storage.local.remove('dictionary:v1');
+      await vi.waitFor(() => {
+        expect(getDictionary().customized).toBe(false);
+      });
+      expect(matchSlotWithAdapters('姓名')).toBe('name');
+    } finally {
+      stop();
+      unsubscribe();
+    }
   });
 
   it('退订后不再收到通知', async () => {
-    const store = await freshStore();
     const listener = vi.fn();
-    const unsubscribe = store.subscribeDictionary(listener);
+    const unsubscribe = subscribeDictionary(listener);
+    const stop = watchDictionaryStorage();
 
-    unsubscribe();
-    await fakeBrowser.storage.local.set({ 'dictionary:v1': CUSTOM_DICTIONARY });
-    store.watchDictionaryStorage();
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(listener).not.toHaveBeenCalled();
+    try {
+      unsubscribe();
+      await fakeBrowser.storage.local.set({ 'dictionary:v1': CUSTOM_DICTIONARY });
+      await vi.waitFor(() => {
+        expect(getDictionary().customized).toBe(true);
+      });
+      expect(listener).not.toHaveBeenCalled();
+    } finally {
+      stop();
+    }
   });
 });
 
 describe('importDictionary / exportDictionary / resetDictionary', () => {
   it('导入成功后落盘并立即生效', async () => {
-    const store = await freshStore();
-    const { matchSlotWithAdapters } = await freshAdapters();
-
-    const result = await store.importDictionary(CUSTOM_DICTIONARY);
+    const result = await importDictionary(CUSTOM_DICTIONARY);
 
     expect(result.errors).toEqual([]);
     expect(matchSlotWithAdapters('绝密暗号')).toBe('email');
     const stored = await fakeBrowser.storage.local.get('dictionary:v1');
     expect(stored['dictionary:v1']).toBeTruthy();
-    expect(store.exportDictionary().adapters[0].id).toBe('custom');
+    expect(exportDictionary().adapters[0].id).toBe('custom');
   });
 
   it('一份没有任何可用适配器的字典会被拒绝写入', async () => {
-    const store = await freshStore();
-    const result = await store.importDictionary({ version: 1, adapters: [] });
+    const result = await importDictionary({ version: 1, adapters: [] });
 
     expect(result.errors.length).toBeGreaterThan(0);
     const stored = await fakeBrowser.storage.local.get('dictionary:v1');
     expect(stored['dictionary:v1']).toBeUndefined();
     // 拒绝写入 = 线上仍然用内置字典
-    expect(store.getDictionary().customized).toBe(false);
+    expect(getDictionary().customized).toBe(false);
   });
 
   it('reset 之后回到内置字典并清掉 storage', async () => {
-    const store = await freshStore();
-    await store.importDictionary(CUSTOM_DICTIONARY);
+    await importDictionary(CUSTOM_DICTIONARY);
 
-    await store.resetDictionary();
+    await resetDictionary();
 
-    expect(store.getDictionary().customized).toBe(false);
-    expect(store.exportDictionary().adapters.map((a) => a.id)).toEqual(['en_default', 'zh_cn']);
+    expect(getDictionary().customized).toBe(false);
+    expect(exportDictionary().adapters.map((a) => a.id)).toEqual(['en_default', 'zh_cn']);
     const stored = await fakeBrowser.storage.local.get('dictionary:v1');
     expect(stored['dictionary:v1']).toBeUndefined();
   });
