@@ -2,7 +2,7 @@
 
 **用字段字典确定性填充国内校招表单。** 全部匹配在浏览器本地完成，毫秒级、可离线、不需要 AI。
 
-> 上游是 [CoolSpring8/fillo](https://github.com/CoolSpring8/fillo)（MIT，为 Google Chrome Built-in AI Challenge 2025 而写，定位海外 ATS）。本分支把它改造成面向国内校招的形态：中文字段、字段字典数据化、默认零 AI。改造记录见 [`docs/roadmap-cn.md`](docs/roadmap-cn.md)。
+> 上游是 [CoolSpring8/fillo](https://github.com/CoolSpring8/fillo)（MIT，为 Google Chrome Built-in AI Challenge 2025 而写，定位海外 ATS）。本项目把它改造成面向国内校招的形态：中文字段、字段字典数据化、默认零 AI。改造记录见 [`docs/roadmap-cn.md`](docs/roadmap-cn.md)。
 
 ## 它做什么
 
@@ -72,7 +72,7 @@ pnpm build           # 生产构建
 
 ## 与上游的关系
 
-本仓库曾是 `CoolSpring8/fillo` 的 fork，现已独立。`upstream` remote 保留，仅用于必要时 cherry-pick 上游修复。MIT 许可与原版权声明完整保留（见 [LICENSE](LICENSE)）。
+上游是 [CoolSpring8/fillo](https://github.com/CoolSpring8/fillo)。本仓库最初是其 fork，现已改名 `filling` 并脱离 fork 网络，成为独立仓库——`filling` 是工程代号，产品对外名称始终是「字段簿 / FieldBook」。`upstream` remote 保留，仅用于必要时 cherry-pick 上游修复。MIT 许可与原版权声明完整保留（见 [LICENSE](LICENSE)）。
 
 ## License
 

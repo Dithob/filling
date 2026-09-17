@@ -1,6 +1,6 @@
 # 字段簿 FieldBook · 二开路线图：面向国内校招的简历自动填充
 
-> 上游：[CoolSpring8/fillo](https://github.com/CoolSpring8/fillo)（MIT）。remote `upstream` 保留，便于 cherry-pick 上游修复。
+> 上游：[CoolSpring8/fillo](https://github.com/CoolSpring8/fillo)（MIT）。remote `upstream` 保留，便于 cherry-pick 上游修复。本仓库现已脱离 fork 独立，仓库名 `filling`（工程代号），产品名「字段簿 FieldBook」。
 > 上游定位是海外 ATS（Greenhouse/Lever/Ashby/Workday），本分支改造目标：国内校招表单（Moka / 北森 / 大易 / 牛客 / 企业官网）+ 中文字段 + 简历附件上传 + 投递记录回写。
 
 ## 设计前提
@@ -58,7 +58,7 @@
 | 3 | 字典扩容到 150+ 中文标签 + 真实站点语料 | ⏳ 未开始 |
 | 4 | 多方案简历库 / 附件 | ⏳ 未开始 |
 | 5 | 投递记录 | ⏳ 未开始 |
-| 6 | 脱离 fork 建独立仓库 | ⏳ 未开始 |
+| 6 | 脱离 fork 建独立仓库（仓库名定为 `filling`） | 🟡 已在 GitHub 改名为 `Dithob/filling`，待点 Leave fork network 断开分叉网络 |
 
 ### 本轮的关键取舍
 
